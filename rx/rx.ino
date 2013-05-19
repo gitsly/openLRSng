@@ -56,6 +56,8 @@ ISR(TIMER1_OVF_vect)
     ppmCountter = 0;
     ppmTotal = 0;
 
+    while (TCNT1<32);
+
     if (PPM_output) {   // clear all bits
       PORTB &= ~PWM_MASK_PORTB(PWM_WITHPPM_MASK);
       PORTD &= ~PWM_MASK_PORTD(PWM_WITHPPM_MASK);
@@ -67,6 +69,8 @@ ISR(TIMER1_OVF_vect)
     uint16_t ppmOut = servoBits2Us(PPM[ppmCountter]) * 2;
     ppmTotal += ppmOut;
     ICR1 = ppmOut;
+
+    while (TCNT1<32);
 
     if (PPM_output) {
       PORTB &= ~PWM_MASK_PORTB(PWM_WITHPPM_MASK);

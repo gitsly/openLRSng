@@ -328,44 +328,25 @@ void setup(void)
 }
 
 
-static uint16_t radioIDCounter = 0;
-static RxToTxPacket recievePacket;
-
-void HandleReceivedPacket()
+void HandleReceivedSerialPacket(RxToTxSerialData* pkt)
 {
-    lastTelemetry = micros();
-    RF_Mode = Receive;
-    spiSendAddress(0x7f);   // Send the package read command
-	uint8_t *buf = (uint8_t *)&recievePacket;
-	for (uint8_t i = 0; i < sizeof(recievePacket); i++)
-	{
-		buf[i] = spiReadData();
-	}
-	RSSI_remote = recievePacket.miscDataByte;
-
-	//if (recievePacket.dataLength)
-	//{
-	//	Serial.print("got: ");
-	//	Serial.println(recievePacket.dataLength);
-	//}
-
 #if MAVLINK_INJECT == 1
 	mavlink_message_t mavlink_msg; // 272 byte in original size, 112 after including GCS_Mavlink header from arduplane.
 	mavlink_status_t mavlink_status; // 12 bytes in size.
 	uint8_t sequenceNumber = 1;
 
-	for (uint8_t i = 0; i < recievePacket.dataLength; i++)
+	for (uint8_t i = 0; i < sizeof(pkt->data); i++)
 	{ 
-		Serial.write(recievePacket.data[i]);
+		Serial.write(pkt->data[i]);
 
-		if(mavlink_parse_char(MAVLINK_COMM_0, recievePacket.data[i], &mavlink_msg, &mavlink_status))
+		if(mavlink_parse_char(MAVLINK_COMM_0, pkt->data[i], &mavlink_msg, &mavlink_status))
 		{
 			sequenceNumber = mavlink_msg.seq;
 			// Inject radio info every X mavlink packets.
 			if ((sequenceNumber % 40) == 0)
 			{
 				// Inject Mavlink radio modem status package.
-				MAVLink_report(RSSI_remote, radioIDCounter);
+				MAVLink_report(RSSI_remote, 0);
 			}
 
 			/* // DEBUG
@@ -409,8 +390,32 @@ void HandleReceivedPacket()
 		}
 	}
 #else
-	Serial.write(recievePacket.data, recievePacket.dataLength);
+	Serial.write(pkt->data, sizeof(pkt->data));
 #endif
+}
+
+
+static uint16_t radioIDCounter = 0;
+static RxToTxPacket recievePacket;
+void HandleReceivedPacket()
+{
+    lastTelemetry = micros();
+    RF_Mode = Receive;
+    spiSendAddress(0x7f);   // Send the package read command
+	uint8_t *buf = (uint8_t *)&recievePacket;
+	for (uint8_t i = 0; i < sizeof(recievePacket); i++)
+	{
+		buf[i] = spiReadData();
+	}
+
+	Serial.println("got");
+
+	switch (recievePacket.type)
+	{
+	case Pkt_SerialData:
+		HandleReceivedSerialPacket(&recievePacket.serial);
+		break;
+	}
 }
 
 void loop(void)

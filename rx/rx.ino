@@ -372,17 +372,17 @@ void loop()
 	  // it would be possible to use the RSSI byte to send various things each frame, differentiate 
 	  // between what through flags in some header...
       // Also we could optimize the first byte 'failsafe'
-     RxToTxPacket packet;
-	  packet.dataLength = getSerialData(packet.data, sizeof(packet.data));	  
-	  packet.miscDataByte = RSSI_last; 
-/*	  
-	  if (packet.dataLength != 0)
-	  {
-		  Serial.print("send: ");
-		  Serial.println(packet.dataLength);
-	  }
-*/
-	  tx_packet((uint8_t*)&packet, sizeof(packet));
+		RxToTxPacket packet;
+	 
+		if (Serial.available() >= sizeof(packet.serial.data)) // has data to fill packet
+		{
+			packet.type = Pkt_SerialData;
+			getSerialData(packet.serial.data, sizeof(packet.serial.data));	  
+
+			Serial.println("send");
+
+			tx_packet((uint8_t*)&packet, sizeof(packet));
+		}
     }
 
     RF_Mode = Receive;

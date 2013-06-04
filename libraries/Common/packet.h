@@ -2,33 +2,26 @@
 #define _packet_h_included_
 
 
-class PacketBase
-{
-public:
+//////////////////////////
 
+// Packet type
+// 
+enum RxToTxPacketType
+{
+	Pkt_SerialData,
+	Pkt_RemoteLostPacketCount,
+	Pkt_RemoteNoise, 
+	Pkt_RemoteTxBuffer,
+	Pkt_Debug,
 };
 
 
-class RxToTxPacket : public PacketBase
+struct RxToTxSerialData
 {
-public:
 	enum Constants
 	{
-		MaxRxToTx_DataLength = 10
+		MaxRxToTx_DataLength = 11
 	};
-
-	// Flags
-	// 
-	enum MiscData
-	{
-		MiscData_ExtendData, // extending normal serial data with one byte. no use sending more misc stuff than what is shown in tx end. eg radio id mavlink packet.
-		MiscData_LostPacketCount,
-		MiscData_RemoteNoise, 
-		MiscData_RemoteTxBuffer,
-		MiscData_Debug,
-		// .... up to 8 different things, with 3 bits (2^3).
-	};
-
 
 	// Idea: for lower baudrates, it makes no sense wasting an entire byte for size & misc.
 	// Use the byte in header to be able to flag when serial is contained within the packet
@@ -38,13 +31,19 @@ public:
 	// 5 bits can specify datalength from 0-32, the 3 remaining bits can be used to distinguish
 	// what miscDataByte means. And meaning of data can vary between each packet sent from Rx.
 	// See 'MiscDataFlags' enum for a proposet dataset.
-	uint8_t dataLength; // Length in bytes of accessory data stream (transparent serial link).
-	uint8_t miscDataByte; 
+	uint8_t packetType; 
 	uint8_t data[MaxRxToTx_DataLength];
 };
 
+union RxToTxPacket
+{
+	uint8_t type;
+	RxToTxSerialData serial;
+};
 
-class TxToRxPacket : public PacketBase
+//////////////////////////////////////////////////////////////////////////////////////////
+
+struct TxToRxPacket
 {
 public:
 	enum Constants

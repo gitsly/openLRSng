@@ -83,7 +83,7 @@ uint8_t	serial_read_space()
 
 
 /// send a MAVLink status report packet
-void MAVLink_report(uint8_t RSSI_remote, uint16_t fixed)
+void MAVLink_report(uint8_t RSSI_remote, uint16_t rxerrors)
 {
 	g_mavlinkBuffer[0] = 254;
 	g_mavlinkBuffer[1] = sizeof(struct mavlink_RADIO_v10);
@@ -100,8 +100,8 @@ void MAVLink_report(uint8_t RSSI_remote, uint16_t fixed)
 	// mission planner does disregard packets with '3D' in header for this calculation
 
 	struct mavlink_RADIO_v10 *m = (struct mavlink_RADIO_v10 *)&g_mavlinkBuffer[MAV_HEADER_SIZE];
-	m->rxerrors = 0; // errors.rx_errors;
-	m->fixed    = fixed; //errors.corrected_packets;
+	m->rxerrors = rxerrors; // errors.rx_errors;
+	m->fixed    = 0; //errors.corrected_packets;
 	m->txbuf    = serial_read_space(); //serial_read_space();
 	m->rssi     = 0; //statistics.average_rssi;
 	m->remrssi  = RSSI_remote; //remote_statistics.average_rssi;

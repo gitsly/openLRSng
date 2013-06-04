@@ -327,23 +327,23 @@ void loop()
       buf[i] = spiReadData();
     }
     
-    if ((recievedPacket.packetFlags == 0x5E) || recievedPacket.packetFlags == 0xF5) { // TODO: use bit flag instead 
-      cli();
-      
-      // TODO: make method in packet class for setting PPM array from packet content.
-      PPM[0] = recievedPacket.ppmLow0to3[0] + ((recievedPacket.ppmHigh0to3 & 0x03) << 8);
-      PPM[1] = recievedPacket.ppmLow0to3[1] + ((recievedPacket.ppmHigh0to3 & 0x0c) << 6);
-      PPM[2] = recievedPacket.ppmLow0to3[2] + ((recievedPacket.ppmHigh0to3 & 0x30) << 4);
-      PPM[3] = recievedPacket.ppmLow0to3[3] + ((recievedPacket.ppmHigh0to3 & 0xc0) << 2);
-      PPM[4] = recievedPacket.ppmLow4to7[0] + ((recievedPacket.ppmHigh4to7 & 0x03) << 8);
-      PPM[5] = recievedPacket.ppmLow4to7[1] + ((recievedPacket.ppmHigh4to7 & 0x0c) << 6);
-      PPM[6] = recievedPacket.ppmLow4to7[2] + ((recievedPacket.ppmHigh4to7 & 0x30) << 4);
-      PPM[7] = recievedPacket.ppmLow4to7[3] + ((recievedPacket.ppmHigh4to7 & 0xc0) << 2);
-      sei();
-    }
+    cli();
+    // TODO: make method in packet class for setting PPM array from packet content.
+    PPM[0] = recievedPacket.ppmLow0to3[0] + ((recievedPacket.ppmHigh0to3 & 0x03) << 8);
+    PPM[1] = recievedPacket.ppmLow0to3[1] + ((recievedPacket.ppmHigh0to3 & 0x0c) << 6);
+    PPM[2] = recievedPacket.ppmLow0to3[2] + ((recievedPacket.ppmHigh0to3 & 0x30) << 4);
+    PPM[3] = recievedPacket.ppmLow0to3[3] + ((recievedPacket.ppmHigh0to3 & 0xc0) << 2);
+    PPM[4] = recievedPacket.ppmLow4to7[0] + ((recievedPacket.ppmHigh4to7 & 0x03) << 8);
+    PPM[5] = recievedPacket.ppmLow4to7[1] + ((recievedPacket.ppmHigh4to7 & 0x0c) << 6);
+    PPM[6] = recievedPacket.ppmLow4to7[2] + ((recievedPacket.ppmHigh4to7 & 0x30) << 4);
+    PPM[7] = recievedPacket.ppmLow4to7[3] + ((recievedPacket.ppmHigh4to7 & 0xc0) << 2);
+    sei();
 
 	// serial bridge
-	Serial.write(recievedPacket.data, recievedPacket.dataLength);
+	if (recievedPacket.IsHeaderBitSet(Header_SerialData))
+	{
+		Serial.write(recievedPacket.data, recievedPacket.GetDataLength());
+	}
 
 #if MAVLINK_INJECT == 1
 	radioIDCounter++;
@@ -355,7 +355,7 @@ void loop()
 	}
 #endif
 
-    if (recievedPacket.packetFlags == 0xF5) {
+    if (recievedPacket.IsHeaderBitSet(Header_FailSafe)) {
       if (!fs_saved) {
         save_failsafe_values();
         fs_saved = 1;
@@ -378,8 +378,6 @@ void loop()
 		{
 			packet.type = Pkt_SerialData;
 			getSerialData(packet.serial.data, sizeof(packet.serial.data));	  
-
-			Serial.println("send");
 
 			tx_packet((uint8_t*)&packet, sizeof(packet));
 		}

@@ -408,8 +408,6 @@ void HandleReceivedPacket()
 		buf[i] = spiReadData();
 	}
 
-	Serial.println("got");
-
 	switch (recievePacket.type)
 	{
 	case Pkt_SerialData:
@@ -455,19 +453,17 @@ void loop(void)
 
       // Construct packet to be sent
   	  TxToRxPacket packet;
+	  packet.header = 0;
 	  
 	  if (FSstate == 2) {
-        packet.packetFlags = 0xF5; // save failsafe
+        packet.header |= Header_FailSafe; // save failsafe
         Red_LED_ON
       } else {
-        packet.packetFlags = 0x5E; // servo positions
         Red_LED_OFF
       }
 
 	  cli(); // disable interrupts when copying servo positions, to avoid race on 2 byte variable
-	  	
-	   //packet.SetPPMValues(PPM)// TODO: implement method in packet class for populating below fields.
-	  
+      //packet.SetPPMValues(PPM)// TODO: implement method in packet class for populating below fields.
       packet.ppmLow0to3[0] = (PPM[0] & 0xff);
       packet.ppmLow0to3[1] = (PPM[1] & 0xff);
       packet.ppmLow0to3[2] = (PPM[2] & 0xff);
@@ -481,7 +477,8 @@ void loop(void)
       sei();
 
 	  // Fill telemetry portion of packet
-	  packet.dataLength = getSerialData(packet.data, sizeof(packet.data));
+	  packet.header |= Header_SerialData;
+	  packet.SetDataLength(getSerialData(packet.data, sizeof(packet.data)));
 
       //Green LED will be on during transmission
       Green_LED_ON ;

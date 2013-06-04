@@ -110,7 +110,7 @@ static uint8_t default_rf_magic[4] = {'#', 'S', 'l', 'y'};
 #define DEFAULT_BEACON_INTERVAL 10 // interval between beacon transmits (s)
 
 //### MISC DEBUG stuff
-#define TX_TIMING // show time used to send packet (in uS) on serial
+//#define TX_TIMING // show time used to send packet (in uS) on serial
 
 //### Forced PPM enablingthis will put RX into combined PPM/PWM mode
 //### having channels 1-7 available in PWM on slots CH1-CH4,CH6-CH8

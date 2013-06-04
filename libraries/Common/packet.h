@@ -43,18 +43,42 @@ union RxToTxPacket
 
 //////////////////////////////////////////////////////////////////////////////////////////
 
+
+// [Flags] 
+// Lowest 4 bits of header
+enum TxToRxHeader
+{
+	Header_FailSafe = 1, // if bit not set, packet contains normal servo positions. 
+	Header_SerialData = 2, // data portions contains serial
+};
+
 struct TxToRxPacket
 {
 public:
 	enum Constants
 	{
-		MaxTxToRx_DataLength = 1
+		MaxTxToRx_DataLength = 2
 	};
 
-	// 0xF5 = 0b11110101 => save failsafe
-	// 0x5E = 0b01011110 => servo positions
-	uint8_t packetFlags;  // This header byte could contain lot more info, use it more wisely!
+	bool IsHeaderBitSet(uint8_t bitMask)
+	{
+		return (header & bitMask) != 0;
+	}
 
+
+	uint8_t GetDataLength()
+	{
+		return header >> 4;
+	}
+
+	void SetDataLength(uint8_t length)
+	{
+		header |= length << 4;
+	}
+
+	uint8_t header;  // This header byte could contain lot more info, use it more wisely!
+
+	// TODO: accessor methods for ppm channels into structure bytes
 	// TODO: these fields below should be private, and set properly by accessor methods.
 	// ppm ranges from 0-1023 (10 bits per ppm channel).
 	uint8_t ppmLow0to3[4];
@@ -63,8 +87,6 @@ public:
 	uint8_t ppmLow4to7[4];
 	uint8_t ppmHigh4to7; // 2 msb per ppm channel 0-4 
 
-	// TODO: accessor methods for ppm channels into structure bytes
-	uint8_t dataLength; // Length in bytes of accessory data stream (transparent serial link).
 	uint8_t data[MaxTxToRx_DataLength];
 };
 

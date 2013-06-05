@@ -9,12 +9,20 @@
 enum RxToTxPacketType
 {
 	Pkt_SerialData,
-	Pkt_RemoteLostPacketCount,
-	Pkt_RemoteNoise, 
-	Pkt_RemoteTxBuffer,
+	Pkt_Status,
 	Pkt_Debug,
 };
 
+
+struct RxToTxStatus
+{
+	uint8_t packetType;
+
+	uint16_t rxerrors;
+	uint8_t rssi;
+	uint8_t txbuf;
+	uint8_t noise;
+};
 
 struct RxToTxSerialData
 {
@@ -23,22 +31,16 @@ struct RxToTxSerialData
 		MaxRxToTx_DataLength = 11
 	};
 
-	// Idea: for lower baudrates, it makes no sense wasting an entire byte for size & misc.
-	// Use the byte in header to be able to flag when serial is contained within the packet
-	// also content of misc could be flagged in this byte!
-
-	// Content (of 'miscDataByte') could be varied through flags stuffed into dataLength byte.
-	// 5 bits can specify datalength from 0-32, the 3 remaining bits can be used to distinguish
-	// what miscDataByte means. And meaning of data can vary between each packet sent from Rx.
-	// See 'MiscDataFlags' enum for a proposet dataset.
 	uint8_t packetType; 
 	uint8_t data[MaxRxToTx_DataLength];
 };
+
 
 union RxToTxPacket
 {
 	uint8_t type;
 	RxToTxSerialData serial;
+	RxToTxStatus status;
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////

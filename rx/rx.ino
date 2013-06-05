@@ -27,6 +27,9 @@ uint32_t last_pack_time = 0;
 uint32_t last_rssi_time = 0;
 uint32_t fs_time; // time when failsafe activated
 
+uint16_t totalLostPack = 0;
+uint8_t packetTypeCounter = 0; // Counts up each rx to tx packet being sent, inorder to be able to send different stuff.
+
 uint32_t last_beacon;
 
 uint8_t  RSSI_count = 0;
@@ -373,14 +376,28 @@ void loop()
 	  // between what through flags in some header...
       // Also we could optimize the first byte 'failsafe'
 		RxToTxPacket packet;
-	 
-		if (Serial.available() >= sizeof(packet.serial.data)) // has data to fill packet
+
+		packetTypeCounter = packetTypeCounter++ % 25;
+
+
+		if (packetTypeCounter != 0 && Serial.available() >= sizeof(packet.serial.data)) // has data to fill packet
 		{
 			packet.type = Pkt_SerialData;
 			getSerialData(packet.serial.data, sizeof(packet.serial.data));	  
-
-			tx_packet((uint8_t*)&packet, sizeof(packet));
 		}
+		else // two status packets every second.
+		{
+			packetTypeCounter = 0;
+
+			packet.type = Pkt_Status;
+
+			packet.status.rxerrors = totalLostPack;
+			packet.status.rssi = RSSI_last;
+			packet.status.txbuf = 0; // TODO: useful?
+			packet.status.noise = 0; // TODO: measure background noise while packet is NOT in air.
+		}
+
+		tx_packet((uint8_t*)&packet, sizeof(packet));
     }
 
     RF_Mode = Receive;
@@ -416,6 +433,7 @@ void loop()
     if ((!lostpack) && (time - last_pack_time) > (modem_params[bind_data.modem_params].interval + 1000)) {
       // we missed one packet, hop to next channel
       lostpack = 1;
+	  totalLostPack++;
       last_pack_time += modem_params[bind_data.modem_params].interval;
       willhop = 1;
     } else if ((lostpack == 1) && (time - last_pack_time) > (modem_params[bind_data.modem_params].interval + 1000)) {

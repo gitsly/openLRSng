@@ -50,7 +50,7 @@
 #define TX_BOARD_TYPE 3
 #define SWAP_GPIO_PINS 0
 
-#define MAVLINK_INJECT 0
+#define MAVLINK_INJECT 1
 
 //####### RX BOARD TYPE #######
 // 3 = OpenLRS Rx v2 Board or OrangeRx UHF RX

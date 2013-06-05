@@ -53,7 +53,7 @@
 #define RX_BOARD_TYPE 3
 
 
-#define MAVLINK_INJECT 0
+#define MAVLINK_INJECT 1
 
 //###### SERIAL PORT SPEED - just debugging atm. #######
 #define SERIAL_BAUD_RATE 115200 //115.200 baud serial port speed

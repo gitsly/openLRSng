@@ -37,7 +37,9 @@
 FastSerialPort0(Serial);
 
 
-uint8_t RSSI_remote = 0;
+uint8_t remote_RSSI = 0;
+uint16_t remote_rxerrors = 0;
+
 uint8_t RF_channel = 0;
 
 uint8_t FSstate = 0; // 1 = waiting timer, 2 = send FS, 3 sent waiting btn release
@@ -346,7 +348,7 @@ void HandleReceivedSerialPacket(RxToTxSerialData* pkt)
 			if ((sequenceNumber % 40) == 0)
 			{
 				// Inject Mavlink radio modem status package.
-				MAVLink_report(RSSI_remote, 0);
+				MAVLink_report(remote_RSSI, remote_rxerrors);
 			}
 
 			/* // DEBUG
@@ -412,6 +414,10 @@ void HandleReceivedPacket()
 	{
 	case Pkt_SerialData:
 		HandleReceivedSerialPacket(&recievePacket.serial);
+		break;
+	case Pkt_Status:
+		remote_RSSI = recievePacket.status.rssi;
+		remote_rxerrors = recievePacket.status.rxerrors;
 		break;
 	}
 }

@@ -41,7 +41,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>C:\ArduPilot-Arduino-1.0.3-windows\hardware\arduino\cores\arduino;C:\ArduPilot-Arduino-1.0.3-windows\hardware\arduino\variants\standard;D:\code\arduino\openLRSng\libraries\FastSerial;D:\code\arduino\openLRSng\libraries\FastSerial\utility;D:\code\arduino\openLRSng\libraries\AP_Common;D:\code\arduino\openLRSng\libraries\AP_Common\utility;D:\code\arduino\openLRSng\libraries\AP_Math;D:\code\arduino\openLRSng\libraries\AP_Math\utility;d:\code\Arduino\ardupilot\libraries\AP_Common;d:\code\Arduino\ardupilot\libraries\AP_Common\utility;C:\ArduPilot-Arduino-1.0.3-windows\libraries\EEPROM;C:\ArduPilot-Arduino-1.0.3-windows\libraries\EEPROM\utility;D:\code\arduino\openLRSng\libraries\Common;D:\code\arduino\openLRSng\libraries\Common\utility;c:\ardupilot-arduino-1.0.3-windows\hardware\tools\avr\avr\include\;c:\ardupilot-arduino-1.0.3-windows\hardware\tools\avr\avr\include\avr\;c:\ardupilot-arduino-1.0.3-windows\hardware\tools\avr\avr\;c:\ardupilot-arduino-1.0.3-windows\hardware\tools\avr\lib\gcc\avr\4.3.2\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\arduino-1.0.4\hardware\arduino\cores\arduino;C:\arduino-1.0.4\hardware\arduino\variants\standard;D:\code\arduino\openLRSng\libraries\FastSerial;D:\code\arduino\openLRSng\libraries\FastSerial\utility;D:\code\arduino\openLRSng\libraries\AP_Common;D:\code\arduino\openLRSng\libraries\AP_Common\utility;D:\code\arduino\openLRSng\libraries\AP_Math;D:\code\arduino\openLRSng\libraries\AP_Math\utility;C:\arduino-1.0.4\libraries\EEPROM;C:\arduino-1.0.4\libraries\EEPROM\utility;D:\code\arduino\openLRSng\libraries\Common;D:\code\arduino\openLRSng\libraries\Common\utility;c:\arduino-1.0.4\hardware\tools\avr\avr\include\;c:\arduino-1.0.4\hardware\tools\avr\avr\include\avr\;c:\arduino-1.0.4\hardware\tools\avr\avr\;c:\arduino-1.0.4\hardware\tools\avr\lib\gcc\avr\4.3.2\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>D:\code\arduino\openLRSng\rx\Visual Micro\.rx.vsarduino.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <IgnoreStandardIncludePath>true</IgnoreStandardIncludePath>
       <PreprocessorDefinitions>ARDUINO=101;__AVR_ATmega328P__;F_CPU=16000000L;__AVR__;__cplusplus;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -79,7 +79,7 @@
   </ImportGroup>
   <ProjectExtensions>
     <VisualStudio>
-      <UserProperties arduino.upload.port="COM1" />
+      <UserProperties arduino.upload.port="COM2" />
     </VisualStudio>
   </ProjectExtensions>
 </Project>

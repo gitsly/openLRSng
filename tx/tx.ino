@@ -36,13 +36,10 @@
 
 FastSerialPort0(Serial);
 
-
-uint8_t lastMavLinkSequence = 0;
-uint16_t mavlinkPacketsOutOfSequence = -1;
-
-uint8_t lastTelemetrySequence = 0;
-uint16_t telemetryPacketsOutOfSequence = -1;
-
+#if USE_SEQUENCENUMBER == 1 	// sequence num for debug
+	uint8_t lastTelemetrySequence = 0;
+	uint16_t telemetryPacketsOutOfSequence = -1;
+#endif
 
 uint8_t remote_RSSI = 0;
 uint16_t remote_fixed = 0;
@@ -304,15 +301,6 @@ void setup(void)
   Serial.print("Rx->Tx packet size: ");
   Serial.println(sizeof(RxToTxPacket));
 //#endif
-
-	//mavlink_message_t mavlink_msg; // 272 byte in original size, 112 after including GCS_Mavlink header from arduplane.
-	//mavlink_status_t mavlink_status; // 12 bytes in size.
-	//mavlink_parse_char(MAVLINK_COMM_0, 't', &mavlink_msg, &mavlink_status);
-	//char tmp[24];
-	//sprintf(tmp, "came here: %d\n", sizeof(mavlink_message_t));
-	//Serial.write(tmp);	
-
-
   setupPPMinput();
 
   attachInterrupt(IRQ_interrupt, RFM22B_Int, FALLING);
@@ -353,18 +341,15 @@ void HandleReceivedSerialPacket(RxToTxSerialData* pkt)
 		{
 			sequenceNumber = mavlink_msg.seq;
 
-			lastMavLinkSequence++;
-			if (lastMavLinkSequence != sequenceNumber)
-			{
-				mavlinkPacketsOutOfSequence++;
-			}
-			lastMavLinkSequence = sequenceNumber;
-
 			// Inject radio info every X mavlink packets.
 			if ((sequenceNumber % 40) == 0)
 			{
 				// Inject Mavlink radio modem status package.
-				MAVLink_report(lastMavLinkSequence, telemetryPacketsOutOfSequence, mavlinkPacketsOutOfSequence);
+#if USE_SEQUENCENUMBER == 1
+				MAVLink_report(remote_RSSI, telemetryPacketsOutOfSequence, remote_rxerrors);
+#else
+				MAVLink_report(remote_RSSI, remote_rxerrors, 0);
+#endif
 			}
 		}
 	}
@@ -387,11 +372,8 @@ void HandleReceivedPacket()
 		buf[i] = spiReadData();
 	}
 
+#if USE_SEQUENCENUMBER == 1 	// sequence num for debug
 	lastTelemetrySequence++;
-
-	//Serial.print("seq: ");
-	//Serial.println(recievePacket.header.sequenceNumber);
-
 	if (lastTelemetrySequence != recievePacket.header.sequenceNumber)
 	{
 		telemetryPacketsOutOfSequence++;
@@ -399,7 +381,8 @@ void HandleReceivedPacket()
 		Serial.println(telemetryPacketsOutOfSequence);
 	}
 	lastTelemetrySequence = recievePacket.header.sequenceNumber;
-	
+#endif
+
 	switch (recievePacket.header.type)
 	{
 	case Pkt_SerialData:

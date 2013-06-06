@@ -110,6 +110,7 @@ static uint8_t default_rf_magic[4] = {'#', 'S', 'l', 'y'};
 
 //### MISC DEBUG stuff
 //#define TX_TIMING // show time used to send packet (in uS) on serial
+#define USE_SEQUENCENUMBER 0  // Do not undefine, just set to 0 to get no sequence number of rxtotx packets.
 
 //### Forced PPM enablingthis will put RX into combined PPM/PWM mode
 //### having channels 1-7 available in PWM on slots CH1-CH4,CH6-CH8

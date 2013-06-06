@@ -16,10 +16,15 @@ enum RxToTxPacketType
 struct RxToTxHeader
 {
 	uint8_t type;
+#if USE_SEQUENCENUMBER == 1
 	uint8_t sequenceNumber; // DEBUG
+#endif
 };
 
-struct RxToTxStatus
+
+// Note: largest struct determines the min packet size and changes to these struct could make packets too big (for a given BAUD rate), so modify with caution.
+
+struct RxToTxStatus 
 {
 	RxToTxHeader header;
 
@@ -33,9 +38,8 @@ struct RxToTxStatus
 struct RxToTxSerialData
 {
 	RxToTxHeader header;
-	uint8_t data[9];
+	uint8_t data[10 - USE_SEQUENCENUMBER];
 };
-
 
 union RxToTxPacket
 {

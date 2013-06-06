@@ -384,7 +384,10 @@ void loop()
 		RxToTxPacket packet;
 
 		packetTypeCounter = packetTypeCounter++ % 25;
+
+#if USE_SEQUENCENUMBER == 1
 		packet.header.sequenceNumber = sequenceNumber++;
+#endif
 
 		if (packetTypeCounter != 0 && Serial.available() >= sizeof(packet.serial.data)) // has data to fill packet
 		{

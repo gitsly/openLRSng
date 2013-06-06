@@ -47,6 +47,8 @@ uint8_t lostpack = 0;
 
 boolean willhop = 0, fs_saved = 0;
 
+uint8_t sequenceNumber = 0;
+
 ISR(TIMER1_OVF_vect)
 {
   if (ppmCountter >= PPM_CHANNELS) {
@@ -348,11 +350,13 @@ void loop()
 		Serial.write(recievedPacket.data, recievedPacket.GetDataLength());
 	}
 
+	// TODO: this could potentially interfere with incoming MAVLINK from groundstation!
+	// do as with tx to detect mavlink framing.
 #if MAVLINK_INJECT == 1
 	radioIDCounter++;
 	if (radioIDCounter > 40)
 	{
-		MAVLink_report(0, 0);
+		MAVLink_report(0, 0, 0);
 		radioIDCounter = 0;
 		// Inject Mavlink radio modem status package.
 	}
@@ -367,6 +371,8 @@ void loop()
       fs_saved = 0;
     }
 
+
+	// TODO: construct telemetry packet beforehand to minimize delay between (construct whil recieving...).
     if (modem_params[bind_data.modem_params].flags & 0x01) {
       // reply with telemetry
 	  //Serial.println("reply with telemetry");
@@ -378,26 +384,35 @@ void loop()
 		RxToTxPacket packet;
 
 		packetTypeCounter = packetTypeCounter++ % 25;
-
+		packet.header.sequenceNumber = sequenceNumber++;
 
 		if (packetTypeCounter != 0 && Serial.available() >= sizeof(packet.serial.data)) // has data to fill packet
 		{
-			packet.type = Pkt_SerialData;
+			packet.header.type = Pkt_SerialData;
 			getSerialData(packet.serial.data, sizeof(packet.serial.data));	  
 		}
 		else // two status packets every second.
 		{
 			packetTypeCounter = 0;
 
-			packet.type = Pkt_Status;
-
+			packet.header.type = Pkt_Status;
 			packet.status.rxerrors = totalLostPack;
 			packet.status.rssi = RSSI_last;
+			packet.status.fixed = Serial.rxOverflowCounter();
 			packet.status.txbuf = 0; // TODO: useful?
 			packet.status.noise = 0; // TODO: measure background noise while packet is NOT in air.
 		}
-
 		tx_packet((uint8_t*)&packet, sizeof(packet));
+
+/*
+		if (Serial.available() >= sizeof(packet.serial.data)) // has data to fill packet
+		{
+			packet.type = Pkt_SerialData;
+			getSerialData(packet.serial.data, sizeof(packet.serial.data));	  
+			tx_packet((uint8_t*)&packet, sizeof(packet));
+		}
+		*/
+
     }
 
     RF_Mode = Receive;

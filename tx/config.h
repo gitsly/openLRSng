@@ -58,9 +58,8 @@
 
 //###### SERIAL PORT SPEED - just debugging atm. #######
 #define SERIAL_BAUD_RATE 115200 //115.200 baud serial port speed
-#define SERIAL_RX_BUFFERSIZE 128 //256 (does not work with atmega168, to low mem)
-#define SERIAL_TX_BUFFERSIZE 64 //128
-
+#define SERIAL_RX_BUFFERSIZE 512 //256 (does not work with atmega168, to low mem)
+#define SERIAL_TX_BUFFERSIZE 256 //128
 
 //###### Should receiver always bind on bootup for 0.5s ######
 //###### If disabled a jumpper must be placed on RX ch1-ch2 to force it to bind

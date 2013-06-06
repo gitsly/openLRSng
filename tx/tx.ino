@@ -37,7 +37,15 @@
 FastSerialPort0(Serial);
 
 
+uint8_t lastMavLinkSequence = 0;
+uint16_t mavlinkPacketsOutOfSequence = -1;
+
+uint8_t lastTelemetrySequence = 0;
+uint16_t telemetryPacketsOutOfSequence = -1;
+
+
 uint8_t remote_RSSI = 0;
+uint16_t remote_fixed = 0;
 uint16_t remote_rxerrors = 0;
 
 uint8_t RF_channel = 0;
@@ -290,12 +298,12 @@ void setup(void)
     Serial.print("EEPROM data saved\n");
   }
 
-#ifdef TX_TIMING
+//#ifdef TX_TIMING
   Serial.print("Tx->Rx packet size: ");
   Serial.println(sizeof(TxToRxPacket));
   Serial.print("Rx->Tx packet size: ");
   Serial.println(sizeof(RxToTxPacket));
-#endif
+//#endif
 
 	//mavlink_message_t mavlink_msg; // 272 byte in original size, 112 after including GCS_Mavlink header from arduplane.
 	//mavlink_status_t mavlink_status; // 12 bytes in size.
@@ -344,51 +352,20 @@ void HandleReceivedSerialPacket(RxToTxSerialData* pkt)
 		if(mavlink_parse_char(MAVLINK_COMM_0, pkt->data[i], &mavlink_msg, &mavlink_status))
 		{
 			sequenceNumber = mavlink_msg.seq;
+
+			lastMavLinkSequence++;
+			if (lastMavLinkSequence != sequenceNumber)
+			{
+				mavlinkPacketsOutOfSequence++;
+			}
+			lastMavLinkSequence = sequenceNumber;
+
 			// Inject radio info every X mavlink packets.
 			if ((sequenceNumber % 40) == 0)
 			{
 				// Inject Mavlink radio modem status package.
-				MAVLink_report(remote_RSSI, remote_rxerrors);
+				MAVLink_report(lastMavLinkSequence, telemetryPacketsOutOfSequence, mavlinkPacketsOutOfSequence);
 			}
-
-			/* // DEBUG
-
-			switch (mavlink_msg.msgid)
-			{
-			  case MAVLINK_MSG_ID_HEARTBEAT:
-				  Serial.write("MAVLINK_MSG_ID_HEARTBEAT");
-				  break;
-			  case MAVLINK_MSG_ID_SYS_STATUS:
-				  Serial.write("MAVLINK_MSG_ID_SYS_STATUS");
-				  break;
-			  case MAVLINK_MSG_ID_GPS_RAW_INT:
-				  Serial.write("MAVLINK_MSG_ID_GPS_RAW_INT");
-				  break;
-			  case MAVLINK_MSG_ID_VFR_HUD:
-				  Serial.write("MAVLINK_MSG_ID_VFR_HUD");
-				  break;
-			  case MAVLINK_MSG_ID_ATTITUDE:
-				  Serial.write("MAVLINK_MSG_ID_ATTITUDE");
-				  break;
-			  case MAVLINK_MSG_ID_NAV_CONTROLLER_OUTPUT:
-				  Serial.write("MAVLINK_MSG_ID_NAV_CONTROLLER_OUTPUT");
-				  break;
-			  case MAVLINK_MSG_ID_MISSION_CURRENT:
-				  Serial.write("MAVLINK_MSG_ID_MISSION_CURRENT");
-				  break;
-			  case MAVLINK_MSG_ID_RC_CHANNELS_RAW:
-				  Serial.write("MAVLINK_MSG_ID_RC_CHANNELS_RAW");
-				  break;
-			  case MAVLINK_MSG_ID_WIND:
-				  Serial.write("MAVLINK_MSG_ID_WIND");
-				  break;
-			}
-
-			char tmp[24];
-			sprintf(tmp, " (%d)\n", mavlink_msg.seq);
-			Serial.write(tmp);	
-			*/
-
 		}
 	}
 #else
@@ -410,12 +387,26 @@ void HandleReceivedPacket()
 		buf[i] = spiReadData();
 	}
 
-	switch (recievePacket.type)
+	lastTelemetrySequence++;
+
+	//Serial.print("seq: ");
+	//Serial.println(recievePacket.header.sequenceNumber);
+
+	if (lastTelemetrySequence != recievePacket.header.sequenceNumber)
+	{
+		telemetryPacketsOutOfSequence++;
+		Serial.print("rxerror: ");
+		Serial.println(telemetryPacketsOutOfSequence);
+	}
+	lastTelemetrySequence = recievePacket.header.sequenceNumber;
+	
+	switch (recievePacket.header.type)
 	{
 	case Pkt_SerialData:
 		HandleReceivedSerialPacket(&recievePacket.serial);
 		break;
 	case Pkt_Status:
+		remote_fixed = recievePacket.status.fixed;
 		remote_RSSI = recievePacket.status.rssi;
 		remote_rxerrors = recievePacket.status.rxerrors;
 		break;

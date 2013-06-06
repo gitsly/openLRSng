@@ -13,12 +13,18 @@ enum RxToTxPacketType
 	Pkt_Debug,
 };
 
+struct RxToTxHeader
+{
+	uint8_t type;
+	uint8_t sequenceNumber; // DEBUG
+};
 
 struct RxToTxStatus
 {
-	uint8_t packetType;
+	RxToTxHeader header;
 
 	uint16_t rxerrors;
+	uint16_t fixed;
 	uint8_t rssi;
 	uint8_t txbuf;
 	uint8_t noise;
@@ -26,19 +32,14 @@ struct RxToTxStatus
 
 struct RxToTxSerialData
 {
-	enum Constants
-	{
-		MaxRxToTx_DataLength = 11
-	};
-
-	uint8_t packetType; 
-	uint8_t data[MaxRxToTx_DataLength];
+	RxToTxHeader header;
+	uint8_t data[9];
 };
 
 
 union RxToTxPacket
 {
-	uint8_t type;
+	RxToTxHeader header;
 	RxToTxSerialData serial;
 	RxToTxStatus status;
 };

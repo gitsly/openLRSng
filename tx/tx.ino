@@ -416,8 +416,9 @@ void loop(void)
   if ((time - lastSent) >= modem_params[bind_data.modem_params].interval) {
     lastSent = time;
 
-    if (1) {
-
+    
+	if (ppmAge < 8)
+	{
       ppmAge++;
 
       if (lastTelemetry) {

@@ -47,7 +47,7 @@
 // 1 = Original Flytron M1 Rx Board as TX (not verified)
 // 2 = Original M2/M3 Tx Board or OrangeRx UHF TX
 // 3 = OpenLRS Rx v2 Board works as TX
-#define TX_BOARD_TYPE 3
+#define TX_BOARD_TYPE 2
 #define SWAP_GPIO_PINS 0
 
 #define MAVLINK_INJECT 1

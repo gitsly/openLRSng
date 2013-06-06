@@ -116,6 +116,9 @@ public:
 	virtual int read(void);
 	virtual int peek(void);
 	virtual void flush(void);
+
+	uint16_t rxOverflowCounter(void);
+
 #if defined(ARDUINO) && ARDUINO >= 100
 	virtual size_t write(uint8_t c);
 #else
@@ -151,6 +154,7 @@ public:
 	/// Public so the interrupt handlers can see it
 	struct Buffer {
 		volatile uint16_t head, tail;	///< head and tail pointers
+		volatile uint16_t overflow;		///< Incremented every time the buffer can't fit a character.
 		uint16_t mask;					///< buffer size mask for pointer wrap
 		uint8_t *bytes;					///< pointer to allocated buffer
 	};
@@ -246,6 +250,10 @@ ISR(_RXVECTOR, ISR_BLOCK)                                               \
                 __FastSerial__rxBuffer[_PORT].bytes[__FastSerial__rxBuffer[_PORT].head] = c; \
                 __FastSerial__rxBuffer[_PORT].head = i;                 \
         }                                                               \
+		else															\
+		{																\
+			__FastSerial__rxBuffer[_PORT].overflow++;				\
+		}																\
 }                                                                       \
 ISR(_TXVECTOR, ISR_BLOCK)                                               \
 {                                                                       \

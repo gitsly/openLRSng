@@ -143,6 +143,13 @@ void FastSerial::end()
 	_open = false;
 }
 
+uint16_t FastSerial::rxOverflowCounter(void)
+{
+	if (!_open)
+		return 0;
+	return _rxBuffer->overflow;
+}
+
 int FastSerial::available(void)
 {
 	if (!_open)

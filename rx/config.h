@@ -52,6 +52,8 @@
 // 3 = OpenLRS Rx v2 Board or OrangeRx UHF RX
 #define RX_BOARD_TYPE 3
 
+#define SERVO_RSSI // Use channel 8 for displaying RSSI with a servo.
+#define SERVO_RSSI_REVERSE 
 
 #define MAVLINK_INJECT 1
 

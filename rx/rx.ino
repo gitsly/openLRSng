@@ -150,6 +150,21 @@ void load_failsafe_values(void)
   PPM[5] = ee_buf[6] + ((ee_buf[9] & 0x0c) << 6);
   PPM[6] = ee_buf[7] + ((ee_buf[9] & 0x30) << 4);
   PPM[7] = ee_buf[8] + ((ee_buf[9] & 0xc0) << 2);
+
+  setRSSIServoOut(0);
+}
+
+void setRSSIServoOut(uint16_t rssi)
+{
+#ifndef SERVO_RSSI
+	return;
+#endif
+
+#ifdef SERVO_RSSI_REVERSE
+	PPM[7] = 1023 - rssi;
+#else
+	PPM[7] = rssi;
+#endif
 }
 
 uint8_t bindReceive(uint32_t timeout)
@@ -238,6 +253,7 @@ void setup()
   pinMode(1, OUTPUT);   // Serial Tx
 
   setup_RSSI_output();
+  setRSSIServoOut(0);
 
   Serial.begin(SERIAL_BAUD_RATE, SERIAL_RX_BUFFERSIZE, SERIAL_TX_BUFFERSIZE);   //Serial Transmission
   Serial.set_blocking_writes(false);
@@ -341,7 +357,10 @@ void loop()
     PPM[4] = recievedPacket.ppmLow4to7[0] + ((recievedPacket.ppmHigh4to7 & 0x03) << 8);
     PPM[5] = recievedPacket.ppmLow4to7[1] + ((recievedPacket.ppmHigh4to7 & 0x0c) << 6);
     PPM[6] = recievedPacket.ppmLow4to7[2] + ((recievedPacket.ppmHigh4to7 & 0x30) << 4);
-    PPM[7] = recievedPacket.ppmLow4to7[3] + ((recievedPacket.ppmHigh4to7 & 0xc0) << 2);
+	PPM[7] = recievedPacket.ppmLow4to7[3] + ((recievedPacket.ppmHigh4to7 & 0xc0) << 2);
+
+	setRSSIServoOut(map(constrain(RSSI_last, 45, 200), 40, 200, 0, 1023));
+
     sei();
 
 	// serial bridge
@@ -461,6 +480,8 @@ void loop()
       willhop = 1;
       Red_LED_ON;
       set_RSSI_output(0);
+	  setRSSIServoOut(0);
+
     } else if ((time - last_pack_time) > 200000L) {
       // hop slowly to allow resync with TX
       last_pack_time = time;

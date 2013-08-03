@@ -78,6 +78,8 @@
 // 1 == 1.6mW
 // 0 == 1.3mW
 #define DEFAULT_RF_POWER 7
+#define SWAP_GPIO_PINS 0
+
 
 //######### TRANSMISSION VARIABLES ##########
 #define DEFAULT_CARRIER_FREQUENCY 435000000  // Hz  startup frequency

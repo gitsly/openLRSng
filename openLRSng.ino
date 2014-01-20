@@ -44,7 +44,7 @@
 
 //####### COMPILATION TARGET #######
 // Enable to compile transmitter code, default is RX
-#define COMPILE_TX
+//#define COMPILE_TX
 
 //####### TX BOARD TYPE #######
 // 0 = Flytron OpenLRS M1 Tx Board (not verified)
@@ -74,7 +74,7 @@
 
 
 //####### MAVLink #######
-#define MAVLINK_INJECT 1
+#define MAVLINK_INJECT 2
 #define MAVLINK_INJECT_INTERVAL 100000
 
 #ifdef COMPILE_TX

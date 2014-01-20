@@ -15,6 +15,13 @@ uint32_t lastPacketTimeUs = 0;
 uint32_t lastRSSITimeUs = 0;
 uint32_t linkLossTimeMs;
 
+// Background noise variables
+uint8_t  noise_count = 0;
+uint16_t noise_sum = 0;
+uint8_t  noise_smooth = 0;
+uint32_t noise_timeBeforeNextNoiseSampleUs = 0;
+//
+
 
 uint32_t lastBeaconTimeMs;
 
@@ -517,6 +524,23 @@ void setup()
 
 }
 
+
+void sampleBackgroundNoise()
+{
+	noise_timeBeforeNextNoiseSampleUs = 0;
+
+	uint8_t noise = rfmGetRSSI(); // Read the RSSI value
+	noise_sum += noise;    // tally up for average
+	noise_count++;
+
+	if (noise_count > hopcount) {
+		noise_sum /= noise_count;
+		noise_smooth = (((uint16_t)noise_smooth * 3 + (uint16_t)noise_sum * 1) / 4);
+		noise_sum = 0;
+		noise_count = 0;
+	}
+}
+
 //############ MAIN LOOP ##############
 void loop()
 {
@@ -579,7 +603,7 @@ void loop()
             // Inject packet right after a completed packet
             if (frameDetector.Parse(ch) && timeUs - last_mavlinkInject_time > MAVLINK_INJECT_INTERVAL) {
               // Inject Mavlink radio modem status package.
-              MAVLink_report(&Serial, 0, compositeRSSI, rxerrors); // uint8_t RSSI_remote, uint16_t RSSI_local, uint16_t rxerrors)
+              MAVLink_report(&Serial, smoothRSSI, noise_smooth, rxerrors, 0); // uint8_t RSSI_remote, uint16_t RSSI_local, uint16_t rxerrors)
               last_mavlinkInject_time = timeUs;
             }
 #endif
@@ -667,6 +691,11 @@ void loop()
   timeUs = micros();
   timeMs = millis();
 
+  if ((timeUs - noise_timeBeforeNextNoiseSampleUs) > 1000 && noise_timeBeforeNextNoiseSampleUs != 0)
+  {
+	  sampleBackgroundNoise();
+  }
+
   // sample RSSI when packet is in the 'air'
   if ((numberOfLostPackets < 2) && (lastRSSITimeUs != lastPacketTimeUs) &&
       (timeUs - lastPacketTimeUs) > (getInterval(&bind_data) - 1500)) {
@@ -746,6 +775,7 @@ void loop()
       RF_channel = 0;
     }
     rfmSetChannel(RF_channel);
+	noise_timeBeforeNextNoiseSampleUs = lastPacketTimeUs;
     willhop = 0;
   }
 

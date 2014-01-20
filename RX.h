@@ -310,6 +310,8 @@ void setupOutputs()
     disablePPM=0;
     disablePWM=0;
   }
+
+  pinMode(A4, OUTPUT);
 }
 
 void updateLBeep(boolean packetlost)
@@ -527,6 +529,8 @@ void setup()
 
 void sampleBackgroundNoise()
 {
+	digitalWrite(A4, HIGH);
+
 	noise_timeBeforeNextNoiseSampleUs = 0;
 
 	uint8_t noise = rfmGetRSSI(); // Read the RSSI value
@@ -539,6 +543,8 @@ void sampleBackgroundNoise()
 		noise_sum = 0;
 		noise_count = 0;
 	}
+
+	digitalWrite(A4, LOW);
 }
 
 //############ MAIN LOOP ##############
@@ -673,11 +679,12 @@ void loop()
         tx_buf[0] |= (0x3F & bytes);
       }
 #endif
+	  digitalWrite(A4, HIGH);
       tx_packet_async(tx_buf, bind_data.serial_downlink);
-
       while(!tx_done()) {
         // DO stuff while transmitting.
       }
+	  digitalWrite(A4, LOW);
     }
 
     RF_Mode = Receive;
@@ -691,19 +698,32 @@ void loop()
   timeUs = micros();
   timeMs = millis();
 
-  if ((timeUs - noise_timeBeforeNextNoiseSampleUs) > 1000 && noise_timeBeforeNextNoiseSampleUs != 0)
+  // Sample background noise while TX/RX is not transmitting
+  // If telemetry is enabled, then there's a tiny window between RX transmits before TX starts transmitting of approx 2ms.
+  if (noise_timeBeforeNextNoiseSampleUs != 0)
   {
-	  sampleBackgroundNoise();
+	  if (bind_data.flags & TELEMETRY_MASK)
+	  {
+		  delayMicroseconds(800); // Hit time between after RX transmit above and before tx starts.
+		  sampleBackgroundNoise();
+	  }
+	  else // No telemetry, sample 1ms after hopping to next channel
+	  {
+		  if ((timeUs - noise_timeBeforeNextNoiseSampleUs) > 1000)
+		  {
+			  sampleBackgroundNoise();
+		  }
+	  }
   }
+
 
 #if MAVLINK_INJECT == 2
   if (timeUs - last_mavlinkInject_time > MAVLINK_INJECT_INTERVAL) {
 	  last_mavlinkInject_time = timeUs;
 
 	  // Inject Mavlink radio modem status package.
-	  //MAVLink_report(&Serial, smoothRSSI, noise_smooth, rxerrors, 0); // uint8_t RSSI_remote, uint16_t RSSI_local, uint16_t rxerrors)
-
-	  Serial.print("noise: "); Serial.print(noise_smooth); Serial.print(" rssi: "); Serial.println(smoothRSSI);
+	  MAVLink_report(&Serial, smoothRSSI, noise_smooth, rxerrors, 0); // uint8_t RSSI_remote, uint16_t RSSI_local, uint16_t rxerrors)
+	  //Serial.print("noise: "); Serial.print(noise_smooth); Serial.print(" rssi: "); Serial.print(smoothRSSI); Serial.print("rxerr: "); Serial.println(rxerrors);
   }
 #endif
 
@@ -745,6 +765,7 @@ void loop()
       // hop slowly to allow resync with TX
       linkQuality = 0;
       willhop = 1;
+	  smoothRSSI = noise_smooth;
       set_RSSI_output();
       lastPacketTimeUs = timeUs;
     }

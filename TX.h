@@ -360,6 +360,9 @@ void setup(void)
   if (bind_data.flags & TELEMETRY_FRSKY) {
     frskyInit((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_SMARTPORT);
   }
+
+  pinMode(A4, OUTPUT);
+
 }
 
 uint8_t compositeRSSI(uint8_t rssi, uint8_t linkq)
@@ -521,6 +524,7 @@ void loop(void)
       }
       //Green LED will be on during transmission
       Green_LED_ON;
+	  digitalWrite(A4, HIGH);
 
       // Send the data over RF
       rfmSetChannel(RF_channel);
@@ -565,6 +569,7 @@ void loop(void)
   }
   //Green LED will be OFF
   Green_LED_OFF;
+  digitalWrite(A4, LOW);
 
   checkFS();
 }

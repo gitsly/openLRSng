@@ -696,6 +696,18 @@ void loop()
 	  sampleBackgroundNoise();
   }
 
+#if MAVLINK_INJECT == 2
+  if (timeUs - last_mavlinkInject_time > MAVLINK_INJECT_INTERVAL) {
+	  last_mavlinkInject_time = timeUs;
+
+	  // Inject Mavlink radio modem status package.
+	  //MAVLink_report(&Serial, smoothRSSI, noise_smooth, rxerrors, 0); // uint8_t RSSI_remote, uint16_t RSSI_local, uint16_t rxerrors)
+
+	  Serial.print("noise: "); Serial.print(noise_smooth); Serial.print(" rssi: "); Serial.println(smoothRSSI);
+  }
+#endif
+
+
   // sample RSSI when packet is in the 'air'
   if ((numberOfLostPackets < 2) && (lastRSSITimeUs != lastPacketTimeUs) &&
       (timeUs - lastPacketTimeUs) > (getInterval(&bind_data) - 1500)) {

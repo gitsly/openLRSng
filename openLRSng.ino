@@ -56,13 +56,13 @@
 // 6 = DTF UHF DeluxeTX (Atmega32u4)
 #ifdef COMPILE_TX
 	#define BOARD_TYPE 3
-#endif
 
+#else
 //####### RX BOARD TYPE #######
 // 3 = Flytron OpenLRS Rx v2 / OrangeRx UHF RX / HawkEye UHF RX
 // 5 = OpenLRSngRX-4ch (DTF UHF)
-#ifndef COMPILE_TX
 	#define BOARD_TYPE 3
+
 #endif
 
 #define REVERSE_PPM_RSSI_SERVO 1
@@ -74,7 +74,10 @@
 
 
 //####### MAVLink #######
-#define MAVLINK_INJECT 2
+// 0 = Disable mavlink injection, normal serial bridge
+// 1 = Inject mavlink radio status between incoming mavlink packets (3DR radio telemtry style)
+// 2 = Inject mavlink radio status on serial with fixed intervals, disregarding other data on serial line (Useful for connecting to MinimOSD when not running an APM, only for showing radio status stuff on OSD).
+#define MAVLINK_INJECT 2 
 #define MAVLINK_INJECT_INTERVAL 100000
 
 #ifdef COMPILE_TX

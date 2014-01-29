@@ -17,7 +17,7 @@ uint32_t linkLossTimeMs;
 
 // Background noise variables
 uint8_t  noise_count = 0;
-uint16_t noise_sum = 0;
+uint32_t noise_sum = 0;
 uint8_t  noise_smooth = 0;
 uint32_t noise_timeBeforeNextNoiseSampleUs = 0;
 //
@@ -533,11 +533,14 @@ void sampleBackgroundNoise()
 
 	noise_timeBeforeNextNoiseSampleUs = 0;
 
-	uint8_t noise = rfmGetRSSI(); // Read the RSSI value
-	noise_sum += noise;    // tally up for average
-	noise_count++;
+	for (uint8_t i = 0; i < 20; i++)
+	{
+		uint8_t noise = rfmGetRSSI(); // Read the RSSI value
+		noise_sum += noise;    // tally up for average
+		noise_count++;
+	}
 
-	if (noise_count > hopcount) {
+	if (noise_count > hopcount * 20) {
 		noise_sum /= noise_count;
 		noise_smooth = (((uint16_t)noise_smooth * 3 + (uint16_t)noise_sum * 1) / 4);
 		noise_sum = 0;
@@ -722,8 +725,8 @@ void loop()
 	  last_mavlinkInject_time = timeUs;
 
 	  // Inject Mavlink radio modem status package.
-	  MAVLink_report(&Serial, smoothRSSI, noise_smooth, rxerrors, 0); // uint8_t RSSI_remote, uint16_t RSSI_local, uint16_t rxerrors)
-	  //Serial.print("noise: "); Serial.print(noise_smooth); Serial.print(" rssi: "); Serial.print(smoothRSSI); Serial.print("rxerr: "); Serial.println(rxerrors);
+	  //MAVLink_report(&Serial, smoothRSSI, noise_smooth, rxerrors, 0); // uint8_t RSSI_remote, uint16_t RSSI_local, uint16_t rxerrors)
+	  Serial.print("noise: "); Serial.print(noise_smooth); Serial.print(" rssi: "); Serial.print(smoothRSSI); Serial.print(" rxerr: "); Serial.println(rxerrors);
   }
 #endif
 

@@ -360,8 +360,9 @@ void setup(void)
   if (bind_data.flags & TELEMETRY_FRSKY) {
     frskyInit((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_SMARTPORT);
   }
-
+#ifdef OUTPUT_DEBUG_TIMING_ON_SDA
   pinMode(A4, OUTPUT);
+#endif
 
 }
 
@@ -524,7 +525,9 @@ void loop(void)
       }
       //Green LED will be on during transmission
       Green_LED_ON;
+#ifdef OUTPUT_DEBUG_TIMING_ON_SDA
 	  digitalWrite(A4, HIGH);
+#endif
 
       // Send the data over RF
       rfmSetChannel(RF_channel);
@@ -569,7 +572,9 @@ void loop(void)
   }
   //Green LED will be OFF
   Green_LED_OFF;
+#ifdef OUTPUT_DEBUG_TIMING_ON_SDA
   digitalWrite(A4, LOW);
+#endif
 
   checkFS();
 }

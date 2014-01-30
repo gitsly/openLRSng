@@ -65,6 +65,7 @@
 #endif
 
 #define REVERSE_PPM_RSSI_SERVO 1
+//#define OUTPUT_DEBUG_TIMING_ON_SDA
 
 
 //### Module type selection (only for modified HW)

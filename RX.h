@@ -311,7 +311,9 @@ void setupOutputs()
     disablePWM=0;
   }
 
+#ifdef OUTPUT_DEBUG_TIMING_ON_SDA
   pinMode(A4, OUTPUT);
+#endif
 }
 
 void updateLBeep(boolean packetlost)
@@ -529,7 +531,9 @@ void setup()
 
 void sampleBackgroundNoise()
 {
+#ifdef OUTPUT_DEBUG_TIMING_ON_SDA
 	digitalWrite(A4, HIGH);
+#endif
 
 	noise_timeBeforeNextNoiseSampleUs = 0;
 
@@ -547,7 +551,9 @@ void sampleBackgroundNoise()
 		noise_count = 0;
 	}
 
+#ifdef OUTPUT_DEBUG_TIMING_ON_SDA
 	digitalWrite(A4, LOW);
+#endif
 }
 
 //############ MAIN LOOP ##############
@@ -682,12 +688,17 @@ void loop()
         tx_buf[0] |= (0x3F & bytes);
       }
 #endif
+
+#ifdef OUTPUT_DEBUG_TIMING_ON_SDA
 	  digitalWrite(A4, HIGH);
+#endif
       tx_packet_async(tx_buf, bind_data.serial_downlink);
       while(!tx_done()) {
         // DO stuff while transmitting.
       }
+#ifdef OUTPUT_DEBUG_TIMING_ON_SDA
 	  digitalWrite(A4, LOW);
+#endif
     }
 
     RF_Mode = Receive;

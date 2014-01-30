@@ -13,10 +13,10 @@
 // 0 == 1.3mW
 #define DEFAULT_RF_POWER 7
 
-#define DEFAULT_CARRIER_FREQUENCY 435000000  // Hz  startup frequency
+#define DEFAULT_CARRIER_FREQUENCY 434000000  // Hz  startup frequency
 #define DEFAULT_CHANNEL_SPACING 5 // 50kHz
-#define DEFAULT_HOPLIST 22,10,19,34,49,41
-#define DEFAULT_RF_MAGIC 0xDEADFEED
+#define DEFAULT_HOPLIST 1,34,56,45,12,128
+#define DEFAULT_RF_MAGIC 0xDEADBABE
 
 //  0 -- 4800bps, best range
 //  1 -- 9600bps, medium range
@@ -147,7 +147,7 @@ void myEEPROMwrite(int16_t addr, uint8_t data)
 }
 
 #ifdef COMPILE_TX
-#define TX_PROFILE_COUNT 4
+#define TX_PROFILE_COUNT 2
 uint8_t activeProfile = 0;
 
 void profileSet()

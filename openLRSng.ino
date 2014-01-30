@@ -61,8 +61,7 @@
 //####### RX BOARD TYPE #######
 // 3 = Flytron OpenLRS Rx v2 / OrangeRx UHF RX / HawkEye UHF RX
 // 5 = OpenLRSngRX-4ch (DTF UHF)
-	#define BOARD_TYPE 3
-
+	#define BOARD_TYPE 5
 #endif
 
 #define REVERSE_PPM_RSSI_SERVO 1

@@ -725,8 +725,8 @@ void loop()
 	  last_mavlinkInject_time = timeUs;
 
 	  // Inject Mavlink radio modem status package.
-	  //MAVLink_report(&Serial, smoothRSSI, noise_smooth, rxerrors, 0); // uint8_t RSSI_remote, uint16_t RSSI_local, uint16_t rxerrors)
-	  Serial.print("noise: "); Serial.print(noise_smooth); Serial.print(" rssi: "); Serial.print(smoothRSSI); Serial.print(" rxerr: "); Serial.println(rxerrors);
+	  MAVLink_report(&Serial, smoothRSSI, noise_smooth, rxerrors, 0); // uint8_t RSSI_remote, uint16_t RSSI_local, uint16_t rxerrors)
+	  //Serial.print("noise: "); Serial.print(noise_smooth); Serial.print(" rssi: "); Serial.print(smoothRSSI); Serial.print(" rxerr: "); Serial.println(rxerrors);
   }
 #endif
 

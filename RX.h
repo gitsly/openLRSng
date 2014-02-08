@@ -1,6 +1,99 @@
 /****************************************************
  * OpenLRSng receiver code
  ****************************************************/
+
+
+
+
+#define INTERNAL_I2C_PULLUPS           // Comment this line if external i2c pullup resistors are present in your hardware implementation
+
+// End of configurable parameters
+//*******************************************************************************************************************************************************************
+
+// This version uses the Arduino supplied Wire library. There is another version that uses its own i2c primitives, and saves ~966 bytes.
+
+
+void lcdClear();
+
+// *********************
+// i2c Eagle Tree Power Panel primitives
+// *********************
+  void i2c_ETPP_init () {
+    Wire.beginTransmission(0x3B);        // ETPP i2c address: 0x3B in 7 bit form. Shift left one bit and concatenate i2c write command bit of zero = 0x3b in 8 bit form.
+    Wire.write(0x00);                     // ETPP command register
+    Wire.write(0x24);                     // Function Set 001D0MSL D : data length for parallel interface only; M: 0 = 1x32 , 1 = 2x16; S: 0 = 1:18 multiplex drive mode, 1×32 or 2×16 character display, 1 = 1:9 multiplex drive mode, 1×16 character display; H: 0 = basic instruction set plus standard instruction set, 1 = basic instruction set plus extended instruction set
+    Wire.write(0x0C);                     // Display on   00001DCB D : 0 = Display Off, 1 = Display On; C : 0 = Underline Cursor Off, 1 = Underline Cursor On; B : 0 = Blinking Cursor Off, 1 = Blinking Cursor On
+    Wire.write(0x06);                     // Cursor Move  000001IS I : 0 = DDRAM or CGRAM address decrements by 1, cursor moves to the left, 1 = DDRAM or CGRAM address increments by 1, cursor moves to the right; S : 0 = display does not shift,  1 = display does shifts
+    Wire.endTransmission();
+    lcdClear();         
+  }
+  void i2c_ETPP_send_cmd (byte c) {
+    Wire.beginTransmission(0x3B);
+    Wire.write(0x00);                     // ETPP command register
+    Wire.write(c);
+    Wire.endTransmission();
+  }
+  void i2c_ETPP_send_char (char c) {
+    if (c > 0x0f) c |=  0x80;            // ETPP uses character set "R", which has A->z mapped same as ascii + high bit; don't mess with custom chars. 
+    Wire.beginTransmission(0x3B);
+    Wire.write(0x40);                     // ETPP data register
+    Wire.write(c);
+    Wire.endTransmission();
+  }
+  void i2c_ETPP_send_string (const char *s) {
+    Wire.beginTransmission(0x3B);
+    Wire.write(0x40);                     // ETPP data register
+    while (*s) {byte c = *s++; if (c > 0x0f) c |=  0x80; Wire.write(c);}
+    Wire.endTransmission();
+  }
+  void i2c_ETPP_set_cursor (byte addr) {  
+    i2c_ETPP_send_cmd(0x80 | addr);    // High bit is "Set DDRAM" command, remaing bits are addr.  
+  }
+  void i2c_ETPP_set_cursor (byte col, byte row) {  
+    row = min(row,1);
+    col = min(col,15);  
+    byte addr = col + row * 0x40;      // Why 0x40? RAM in this controller has many more bytes than are displayed.  In particular, the start of the second line (line 1 char 0) is 0x40 in DDRAM. The bytes between 0x0F (last char of line 1) and 0x40 are not displayable (unless the display is placed in marquee scroll mode)
+    i2c_ETPP_set_cursor(addr);          
+  }
+  void i2c_ETPP_create_char (byte idx, uint8_t* array) {
+    i2c_ETPP_send_cmd(0x80);                   // CGRAM and DDRAM share an address register, but you can't set certain bits with the CGRAM address command.   Use DDRAM address command to be sure high order address bits are zero. 
+    i2c_ETPP_send_cmd(0x40 | byte(idx * 8));   // Set CGRAM address 
+    Wire.beginTransmission(0x3B);  
+    Wire.write(0x40);                           // ETPP data register
+    for (byte i = 0 ; i<8 ; i++) {Wire.write(*array); array++;}
+    Wire.endTransmission();
+  }
+//*******************************************************************************************************************************************************************
+
+// *********************
+// Functions that mimic LiquidCrystal library functions and work with ETPP
+// *********************
+  void lcdClear() {
+    i2c_ETPP_send_cmd(0x01);                              // Clear display command, which does NOT clear an Eagle Tree because character set "R" has a '>' at 0x20
+    for (byte i = 0; i<80; i++) i2c_ETPP_send_char(' ');  // Blanks for all 80 bytes of RAM in the controller, not just the 2x16 display
+  }
+  void lcdBlink()                                                      {
+    i2c_ETPP_send_cmd(0x0D);            // Display on   00001DCB D : 0 = Display Off, 1 = Display On; C : 0 = Underline Cursor Off, 1 = Underline Cursor On; B : 0 = Blinking Cursor Off, 1 = Blinking Cursor On
+  }
+  void lcdNoBlink()                                                      {
+    i2c_ETPP_send_cmd(0x0C);            // Display on   00001DCB D : 0 = Display Off, 1 = Display On; C : 0 = Underline Cursor Off, 1 = Underline Cursor On; B : 0 = Blinking Cursor Off, 1 = Blinking Cursor On
+  }
+  void lcdCursor()                                                      {
+    i2c_ETPP_send_cmd(0x0E);            // Display on   00001DCB D : 0 = Display Off, 1 = Display On; C : 0 = Underline Cursor Off, 1 = Underline Cursor On; B : 0 = Blinking Cursor Off, 1 = Blinking Cursor On
+  }
+  void lcdNoCursor()                                                      {
+    i2c_ETPP_send_cmd(0x0C);            // Display on   00001DCB D : 0 = Display Off, 1 = Display On; C : 0 = Underline Cursor Off, 1 = Underline Cursor On; B : 0 = Blinking Cursor Off, 1 = Blinking Cursor On
+  }
+  void lcdCreateChar(int8_t idx, uint8_t* array)                       {i2c_ETPP_create_char(idx, array);}
+  void lcdSetCursor(uint8_t pos)                                       {i2c_ETPP_set_cursor(pos % 16, pos / 16);}
+  void lcdWrite(int8_t digit)                                          {i2c_ETPP_send_char(digit);}
+  void lcdWrite(uint8_t pos, int8_t digit)                             {lcdSetCursor(pos); lcdWrite(digit);}
+  void lcdPrint                  (char const      msg[])               {i2c_ETPP_send_string(msg);}
+  void lcdPrint     (uint8_t pos, char const      msg[])               {lcdSetCursor(pos); lcdPrint(msg);}
+
+//----------------
+
+
 FastSerialPort0(Serial);
 
 #ifdef MAVLINK_INJECT
@@ -514,15 +607,29 @@ void setup()
   RF_Mode = Receive;
   to_rx_mode();
 
+  /*
   if ((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_FRSKY) {
     Serial.begin(9600);
   } else {
     Serial.begin(bind_data.serial_baudrate, SERIAL_RX_BUFFERSIZE, SERIAL_TX_BUFFERSIZE);
   }
+  */
 
   while (Serial.available()) {
     Serial.read();
   }
+
+
+  Wire.begin();            // Join the i2c bus as a host
+  i2c_ETPP_init();       // Initalize the Eagle Tree Power Panel
+
+  char buf[16];
+  //sprintf(buf, "OpenLRSngRX v%d.%d", 3, 5); // 19626 - 18070 = 1556 (this line takes 1556 bytes in memory, but it's convenient, remove once memory starts to b
+  lcdPrint(0, buf);       // Position zero (line 0, character 0) = start of line 1
+  //lcdPrint(16,"on HW");      // Position 16   (line 1, character 0) = start of line 2
+  //lcdWrite(16 + 7, BOARD_TYPE);
+
+
   linkAcquired = 0;
   lastPacketTimeUs = micros();
 
@@ -736,7 +843,7 @@ void loop()
 	  last_mavlinkInject_time = timeUs;
 
 	  // Inject Mavlink radio modem status package.
-	  MAVLink_report(&Serial, smoothRSSI, noise_smooth, rxerrors, 0); // uint8_t RSSI_remote, uint16_t RSSI_local, uint16_t rxerrors)
+	  //MAVLink_report(&Serial, smoothRSSI, noise_smooth, rxerrors, 0); // uint8_t RSSI_remote, uint16_t RSSI_local, uint16_t rxerrors)
 	  //Serial.print("noise: "); Serial.print(noise_smooth); Serial.print(" rssi: "); Serial.print(smoothRSSI); Serial.print(" rxerr: "); Serial.println(rxerrors);
   }
 #endif

@@ -2,7 +2,11 @@
  * OpenLRSng transmitter code
  ****************************************************/
 
-FastSerialPort0(Serial);
+#ifdef __AVR_ATmega32U4__
+FastSerialPort1(TelemetrySerial);
+#else
+FastSerialPort0(TelemetrySerial);
+#endif
 
 #ifdef MAVLINK_INJECT
 uint32_t last_mavlinkInject_time = 0;
@@ -699,17 +703,17 @@ void loop(void)
 
       // Construct packet to be sent
       tx_buf[0] &= 0xc0; //preserve seq. bits
-      if (Serial.available() && (serial_okToSend == 2)) {
+      if (TelemetrySerial.available() && (serial_okToSend == 2)) {
         tx_buf[0] ^= 0x80; // signal new data on line
         uint8_t bytes = 0;
         uint8_t maxbytes = 8;
         if (getPacketSize(&bind_data) < 9) {
           maxbytes = getPacketSize(&bind_data) - 1;
         }
-        while ((bytes < maxbytes) && Serial.available()) {
+        while ((bytes < maxbytes) && TelemetrySerial.available()) {
           bytes++;
           uint8_t readByte;
-          Serial.readBytes((char*)&readByte, 1);
+          TelemetrySerial.readBytes((char*)&readByte, 1);
           tx_buf[bytes] = readByte;
           serial_resend[bytes] = readByte;
         }

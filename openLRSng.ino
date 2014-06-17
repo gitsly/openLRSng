@@ -61,7 +61,9 @@
 //#define RFMXX_915
 
 //### Enabled Features (some features can be enabled / disabled with compile flag)
+#ifndef __AVR_ATmega32U4__ // Project is too big so remove stuff
 #define CLI // Command-line interface
+#endif
 #define CONFIGURATOR // Phoenix Serial Protocol (required for Configurator to work)
 
 //### DEBUG flags, may be dangerous

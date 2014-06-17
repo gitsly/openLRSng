@@ -848,13 +848,6 @@ retry:
           tx_buf[6] = countSetBits(linkQuality & 0x7fff);
         }
       }
-#ifdef TEST_NO_ACK_BY_CH1
-      if (PPM[0]<900) {
-        tx_packet_async(tx_buf, 9);
-        while(!tx_done()) {
-          checkSerial();
-        }
-      }
 #else
       if (!((tx_buf[0] ^ rx_buf[0]) & 0x40)) { // If not true, resend last message
         tx_buf[0] &= 0xc0; // set 2 msb high
@@ -867,6 +860,15 @@ retry:
         tx_buf[0] |= (0x3F & bytes);
       }
 #endif
+
+#ifdef TEST_NO_ACK_BY_CH1
+      if (PPM[0]<900) {
+        tx_packet_async(tx_buf, bind_data.serial_downlink);
+        while(!tx_done()) {
+           // DO stuff while transmitting.
+        }
+      }
+#else
       tx_packet_async(tx_buf, bind_data.serial_downlink);
       while(!tx_done()) {
         // DO stuff while transmitting.

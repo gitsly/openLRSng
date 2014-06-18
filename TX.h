@@ -2,12 +2,6 @@
  * OpenLRSng transmitter code
  ****************************************************/
 
-#ifdef __AVR_ATmega32U4__
-FastSerialPort1(TelemetrySerial);
-#else
-FastSerialPort0(TelemetrySerial);
-#endif
-
 #ifdef MAVLINK_INJECT
 uint32_t last_mavlinkInject_time = 0;
 MavlinkFrameDetector frameDetector;

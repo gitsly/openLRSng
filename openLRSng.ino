@@ -75,6 +75,7 @@
 
 
 //####### MAVLink #######
+#define SERIAL_BUFFER_SIZE  256
 #define MAVLINK_INJECT 1
 #define MAVLINK_INJECT_INTERVAL 100000
 
@@ -89,11 +90,12 @@
 //####################
 //### CODE SECTION ###
 //####################
-
+#ifndef __AVR_ATmega32U4__
 #include <FastSerial.h>
 #include <BetterStream.h>
 #include <AP_Common.h>
 #include <AP_Math.h>
+#endif
 
 #include <Arduino.h>
 

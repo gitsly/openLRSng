@@ -374,13 +374,12 @@ void setup(void)
 
   if (bind_data.serial_baudrate && (bind_data.serial_baudrate < 5)) {
     serialMode = bind_data.serial_baudrate;
-    TelemetrySerial.begin((serialMode == 3) ? 100000 : 115200); // SBUS is 100000 rest 115200
+    TelemetrySerial.begin((serialMode == 3) ? 100000 : 115200, SERIAL_RX_BUFFERSIZE, SERIAL_TX_BUFFERSIZE); // SBUS is 100000 rest 115200
   } else {
     // switch to userdefined baudrate here
-    TelemetrySerial.begin(bind_data.serial_baudrate);
+    TelemetrySerial.begin(bind_data.serial_baudrate, SERIAL_RX_BUFFERSIZE, SERIAL_TX_BUFFERSIZE);
   }
   checkButton();
-
 
   Red_LED_OFF;
   buzzerOff();

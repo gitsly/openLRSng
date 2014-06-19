@@ -46,7 +46,7 @@
 #ifdef HardwareSerial_h
 # error Must include FastSerial.h before the Arduino serial driver is defined.
 #endif
-#define HardwareSerial_h
+//#define HardwareSerial_h
 
 #include <inttypes.h>
 #include <stdlib.h>
@@ -92,10 +92,12 @@
 /// actually get defined, otherwise Arduino will suck in the
 /// HardwareSerial library and linking will fail.
 //@{
+#ifndef __AVR_ATmega32U4__
 extern class FastSerial Serial;
 extern class FastSerial Serial1;
 extern class FastSerial Serial2;
 extern class FastSerial Serial3;
+#endif
 //@}
 
 /// The FastSerial class definition

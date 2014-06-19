@@ -91,8 +91,6 @@
 //####################
 #include <FastSerial.h>
 #include <BetterStream.h>
-
-FastSerialPort1 (Serial10);
 #include <Arduino.h>
 
 #include "version.h"
@@ -103,6 +101,12 @@ FastSerialPort1 (Serial10);
 
 #include <mavlink.h>
 #include <mavlinkframedetector.h>
+
+#ifdef __AVR_ATmega32U4__
+FastSerialPort1 (TelemetrySerial);
+#else 
+FastSerialPort0 (TelemetrySerial);
+#endif
 
 #ifdef COMPILE_TX
 #include "binary_com.h"

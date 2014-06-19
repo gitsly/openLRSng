@@ -46,7 +46,9 @@
 #ifdef HardwareSerial_h
 # error Must include FastSerial.h before the Arduino serial driver is defined.
 #endif
-//#define HardwareSerial_h
+#ifndef __AVR_ATmega32U4__
+#define HardwareSerial_h
+#endif
 
 #include <inttypes.h>
 #include <stdlib.h>

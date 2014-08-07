@@ -168,7 +168,7 @@ void bindPrint(void)
   }
   Serial.println();
 
-  Serial.print(F("6) Datarate (0-2):   "));
+  Serial.print(F("6) Datarate (0-4):   "));
   Serial.println(bind_data.modem_params);
 
   Serial.print(F("7) Channel config:  "));
@@ -322,7 +322,7 @@ void CLI_menu_headers(void)
     Serial.println(F("Set Hop channels (max 24, separated by commas) valid values 1-255: "));
     break;
   case 6:
-    Serial.println(F("Set Datarate (0-2): "));
+    Serial.println(F("Set Datarate (0-4): "));
     break;
   case 7:
     Serial.println(F("Set Channel config: "));

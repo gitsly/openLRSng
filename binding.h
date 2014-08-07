@@ -21,6 +21,8 @@
 //  0 -- 4800bps, best range
 //  1 -- 9600bps, medium range
 //  2 -- 19200bps, medium range
+//  3 -- 57600, short range? (experimental)
+//	4 -- 125000, short range (experimental)
 #define DEFAULT_DATARATE 2
 
 #define DEFAULT_BAUDRATE 57600

@@ -789,7 +789,8 @@ retry:
                // Inject packet right after a completed packet
                if (frameDetector.Parse(ch) && timeUs - last_mavlinkInject_time > MAVLINK_INJECT_INTERVAL) {
                  // Inject Mavlink radio modem status package.
-                 MAVLink_report(&Serial, 0, compositeRSSI, rxerrors); // uint8_t RSSI_remote, uint16_t RSSI_local, uint16_t rxerrors)
+				 const uint8_t rssi_transmitter = 0;
+                 MAVLink_report(&Serial, smoothRSSI, 0, rxerrors, rssi_transmitter); // uint8_t RSSI_remote, uint16_t RSSI_local, uint16_t rxerrors)
                  last_mavlinkInject_time = timeUs;
                }
    #endif

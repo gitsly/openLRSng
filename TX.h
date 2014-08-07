@@ -646,7 +646,7 @@ void loop(void)
           TelemetrySerial.write(ch);
           if (frameDetector.Parse(ch) && time - last_mavlinkInject_time > MAVLINK_INJECT_INTERVAL) {
             // Inject Mavlink radio modem status package.
-            MAVLink_report(&TelemetrySerial, 0, RSSI_tx, rxerrors); // uint8_t RSSI_remote, uint16_t RSSI_local, uint16_t rxerrors)
+            MAVLink_report(&TelemetrySerial, RSSI_tx, 0, rxerrors, 0);
             last_mavlinkInject_time = time;
           }
         }

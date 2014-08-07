@@ -9,5 +9,4 @@
 *.elf
 *.o
 *.hex
-libraries/*
 out

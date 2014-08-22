@@ -74,6 +74,7 @@
 
 //####### Transparant serial #######
 #define COM_BUF_MAXSIZE 32 // maximum downlink packet size.
+#define SERIAL_BUFSIZE 32
 
 //####### MAVLink #######
 #define MAVLINK_INJECT_INTERVAL 100000

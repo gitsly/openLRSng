@@ -397,7 +397,6 @@ uint8_t tx_buf[COM_BUF_MAXSIZE]; // TX buffer (downlink)(type plus 8 x data)
 // 0x00 link info [RSSI] [AFCC]*2 etc...
 // type 0x38-0x3f downlink serial data 1-COM_BUF_MAXSIZE bytes
 
-#define SERIAL_BUFSIZE 32
 uint8_t serial_buffer[SERIAL_BUFSIZE];
 uint8_t serial_head;
 uint8_t serial_tail;

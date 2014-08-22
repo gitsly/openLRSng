@@ -307,7 +307,6 @@ static inline void checkFS(void)
 uint8_t tx_buf[21];
 uint8_t rx_buf[COM_BUF_MAXSIZE];
 
-#define SERIAL_BUFSIZE 32
 uint8_t serial_buffer[SERIAL_BUFSIZE];
 uint8_t serial_resend[COM_BUF_MAXSIZE];
 uint8_t serial_head;

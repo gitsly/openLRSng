@@ -81,13 +81,13 @@ void packChannels(uint8_t config, volatile uint16_t PPM[], uint8_t *p)
 void unpackChannels(uint8_t config, volatile uint16_t PPM[], uint8_t *p)
 {
   uint8_t i;
-  for (i = 0; i <= (config / 2); i++) { // 4ch packed in 5 bytes
+  for (i=0; i<=(config/2); i++) { // 4ch packed in 5 bytes
     PPM[0] = (((uint16_t)p[4] & 0x03) << 8) + p[0];
     PPM[1] = (((uint16_t)p[4] & 0x0c) << 6) + p[1];
     PPM[2] = (((uint16_t)p[4] & 0x30) << 4) + p[2];
     PPM[3] = (((uint16_t)p[4] & 0xc0) << 2) + p[3];
-    p += 5;
-    PPM += 4;
+    p+=5;
+    PPM+=4;
   }
   if (config & 1) { // 4ch packed in 1 byte;
     PPM[0] = (((uint16_t)p[0] >> 6) & 3) * 333 + 12;

@@ -23,15 +23,15 @@ uint16_t rxcVersion;
 #ifdef HEXGET
 void hexDump(void *in, uint16_t bytes)
 {
-  uint16_t check = 0;
+  uint16_t check=0;
   uint8_t  *p = (uint8_t*)in;
   Serial.print("@S:");
   Serial.print(bytes);
   if (bytes) {
     Serial.print("H:");
     while (bytes) {
-      Serial.print(hexTab[*(p) >> 4]);
-      Serial.print(hexTab[*(p) & 15]);
+      Serial.print(hexTab[*(p)>>4]);
+      Serial.print(hexTab[*(p)&15]);
       Serial.print(',');
       check = ((check << 1) + ((check & 0x8000) ? 1 : 0));
       check ^= *p;
@@ -40,7 +40,7 @@ void hexDump(void *in, uint16_t bytes)
     }
   }
   Serial.print("T:");
-  Serial.print(check, 16);
+  Serial.print(check,16);
   Serial.println(":");
 }
 
@@ -55,7 +55,7 @@ void hexGet(void *out, uint16_t expected)
   char     ch;
   while ((millis() - start) < 2000) {
     if (Serial.available()) {
-      ch = Serial.read();
+      ch=Serial.read();
       switch (state) {
       case 0: // wait for S
         if (ch == 'S') {
@@ -180,7 +180,7 @@ void bindPrint(void)
     Serial.println(F("Disabled"));
     break;
   case TELEMETRY_PASSTHRU:
-    Serial.println(F("Transparent (Mavlink)"));
+    Serial.println(F("Transparent"));
     break;
   case TELEMETRY_FRSKY:
     Serial.println(F("FrSky"));
@@ -188,6 +188,10 @@ void bindPrint(void)
   case TELEMETRY_SMARTPORT:
     Serial.println(F("smartPort"));
     break;
+  case TELEMETRY_MAVLINK:
+    Serial.println(F("Transparent (Mavlink)"));
+    break;
+
   }
 
   Serial.print(F("9) Serial baudrate:"));
@@ -677,7 +681,7 @@ void handleRXmenu(char c)
           if ((CLI_buffer[0] | 0x20) == 'p') {
             value = strtoul(CLI_buffer + 1, NULL, 0);
             if ((value >= 1) && (value <= 8)) {
-              value = EU_PMR_CH(value);
+              value=EU_PMR_CH(value);
             } else {
               value = 1; //invalid
             }
@@ -890,9 +894,7 @@ void handleCLImenu(char c)
     case '8':
       Serial.println(F("Toggled telemetry!"));
       {
-        uint8_t newf = (bind_data.flags + TELEMETRY_PASSTHRU) & TELEMETRY_MASK;
-        bind_data.flags &= ~TELEMETRY_MASK;
-        bind_data.flags |= newf;
+		bind_data.flags = (bind_data.flags + TELEMETRY_PASSTHRU) % (TELEMETRY_MAVLINK + 8); // last mode + first.
       }
       CLI_menu = -1;
       break;

@@ -23,8 +23,8 @@
 //  2 -- 19200bps, medium range
 #define DEFAULT_DATARATE 2
 
-#define DEFAULT_BAUDRATE 57600
-#define DEFAULT_SERIAL_DOWNLINK 29
+#define DEFAULT_BAUDRATE 115200
+#define DEFAULT_SERIAL_DOWNLINK 9 // 29 is good for APM @ datarate 2
 
 // TX_CONFIG flag masks
 #define MUTE_TX             0x10 // do not beep on telemetry loss
@@ -44,7 +44,8 @@
 #define TELEMETRY_PASSTHRU  0x08
 #define TELEMETRY_FRSKY     0x10 // covers smartport if used with &
 #define TELEMETRY_SMARTPORT 0x18
-#define TELEMETRY_MASK      0x18
+#define TELEMETRY_MAVLINK	0x20
+#define TELEMETRY_MASK      0x38
 #define CHANNELS_4_4        0x01
 #define CHANNELS_8          0x02
 #define CHANNELS_8_4        0x03
@@ -72,8 +73,6 @@
 
 #define BINDING_POWER     0x06 // not lowest since may result fail with RFM23BP
 
-
-//#define TELEMETRY_PACKETSIZE 9
 #define BIND_MAGIC (0xDEC1BE15 + (OPENLRSNG_VERSION & 0xfff0))
 #define BINDING_VERSION ((OPENLRSNG_VERSION & 0x0ff0)>>4)
 
@@ -126,7 +125,7 @@ struct RX_config {
 struct bind_data {
   uint8_t version;
   uint32_t serial_baudrate;
-  uint8_t serial_downlink; // 0-63 max byte count for serial downlink
+  uint8_t serial_downlink; // 0-COM_BUF_MAXSIZE, max byte count for serial downlink
   uint32_t rf_frequency;
   uint32_t rf_magic;
   uint8_t rf_power;

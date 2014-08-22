@@ -44,14 +44,14 @@
 
 //####### COMPILATION TARGET #######
 // Enable to compile transmitter code, default is RX (remove leading //)
-//#define COMPILE_TX
+#define COMPILE_TX
 
 //####### TX BOARD TYPE #######
 // Enable one of the lines below (remove leading //)
 //#define BOARD_TYPE 0 // 0 = Flytron OpenLRS M1 Tx Board (not verified)
 //#define BOARD_TYPE 1 // 1 = Flytron OpenLRS M1 Rx Board as TX (not verified)
 //#define BOARD_TYPE 2 // 2 = Flytron OpenLRS M2/M3 Tx Board / OrangeRx UHF TX
-//#define BOARD_TYPE 3 // 3 = Flytron OpenLRS Rx v2 Board / OrangeRx UHF RX / HawkEye UHF RX (RX and TX supported)
+#define BOARD_TYPE 3 // 3 = Flytron OpenLRS Rx v2 Board / OrangeRx UHF RX / HawkEye UHF RX (RX and TX supported)
 //#define BOARD_TYPE 4 // 4 = OpenLRSngTX / HawkEye UHF TX
 //#define BOARD_TYPE 5 // 5 = OpenLRSngRX-4/6ch (DTF UHF/HawkEye) (RX and TX supported)
 //#define BOARD_TYPE 6 // 6 = DTF UHF/HawkEye DeluxeTX (Atmega32u4)
@@ -72,26 +72,15 @@
 //#define DEBUG_DUMP_PPM // dump PPM data on serial (both TX/RX)
 
 
-//####### MAVLink #######
-#define MAVLINK_INJECT 1
-#define MAVLINK_INJECT_INTERVAL 100000
+//####### Transparant serial #######
+#define COM_BUF_MAXSIZE 32 // maximum downlink packet size.
 
-#ifdef COMPILE_TX
-#define SERIAL_RX_BUFFERSIZE 128
-#define SERIAL_TX_BUFFERSIZE 64
-#else // COMPILE_RX
-#define SERIAL_RX_BUFFERSIZE 256
-#define SERIAL_TX_BUFFERSIZE 64
-#endif
+//####### MAVLink #######
+#define MAVLINK_INJECT_INTERVAL 100000
 
 //####################
 //### CODE SECTION ###
 //####################
-
-#include <FastSerial.h>
-#include <BetterStream.h>
-#include <AP_Common.h>
-#include <AP_Math.h>
 
 #include <Arduino.h>
 
@@ -101,8 +90,8 @@
 #include "binding.h"
 #include "common.h"
 
-#include <mavlink.h>
-#include <mavlinkframedetector.h>
+#include "mavlink.h"
+#include "mavlinkframedetector.h"
 
 #ifdef COMPILE_TX
 #include "binary_com.h"

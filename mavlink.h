@@ -1,9 +1,3 @@
-#ifndef _Mavlink_Included_
-#define _Mavlink_Included_
-
-//#include <stdarg.h>
-
-
 struct mavlink_RADIO_v10 {
 	uint16_t rxerrors;
 	uint16_t fixed;
@@ -76,14 +70,14 @@ static void mavlink_crc(uint8_t* buf)
 // return available space in rx buffer as a percentage
 uint8_t	serial_read_space()
 {
-	uint16_t space = SERIAL_RX_BUFFERSIZE - Serial.available();
-	space = (100 * (space / 8)) / (SERIAL_RX_BUFFERSIZE / 8);
+	uint16_t space = SERIAL_BUFSIZE /*- Serial.available()*/;
+	space = (100 * (space / 8)) / (SERIAL_BUFSIZE / 8);
 	return space;
 }
 
 
 /// send a MAVLink status report packet
-void MAVLink_report(FastSerial* serialPort, uint8_t RSSI_remote, uint16_t RSSI_local, uint16_t rxerrors)
+void MAVLink_report(/*Serial* serialPort,*/ uint8_t RSSI_remote, uint16_t RSSI_local, uint16_t rxerrors)
 {
 	g_mavlinkBuffer[0] = 254;
 	g_mavlinkBuffer[1] = sizeof(struct mavlink_RADIO_v10);
@@ -110,10 +104,8 @@ void MAVLink_report(FastSerial* serialPort, uint8_t RSSI_remote, uint16_t RSSI_l
 
 	mavlink_crc(g_mavlinkBuffer);
 
-	if (serialPort->txspace() >= sizeof(g_mavlinkBuffer)) 		// don't cause an overflow
-	{
-		serialPort->write(g_mavlinkBuffer, sizeof(g_mavlinkBuffer));
-	}
+	//if (serialPort->txspace() >= sizeof(g_mavlinkBuffer)) 		// don't cause an overflow
+	//{
+		//serialPort->write(g_mavlinkBuffer, sizeof(g_mavlinkBuffer));
+	//}
 }
-
-#endif

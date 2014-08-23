@@ -687,7 +687,7 @@ void loop(void)
     while (PPM[2] > 1013);
 #endif
 
-    if (ppmAge < 8) {
+    if (1 /*ppmAge < 8*/) {
       ppmAge++;
 
       if (lastTelemetry) {

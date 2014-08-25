@@ -44,7 +44,7 @@
 
 //####### COMPILATION TARGET #######
 // Enable to compile transmitter code, default is RX (remove leading //)
-//#define COMPILE_TX
+#define COMPILE_TX
 
 //####### TX BOARD TYPE #######
 // Enable one of the lines below (remove leading //)
@@ -73,7 +73,7 @@
 
 
 //####### Transparant serial #######
-#define COM_BUF_MAXSIZE 32 // maximum downlink packet size.
+#define COM_BUF_MAXSIZE 32 // maximum downlink packet size. Max value is 64, No use having higher than SERIAL_BUFSIZE
 #define SERIAL_BUFSIZE 32
 
 //####### MAVLink #######

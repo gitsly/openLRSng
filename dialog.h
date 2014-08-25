@@ -206,8 +206,10 @@ void bindPrint(void)
   Serial.print(F("B) Micro (half) PPM    :"));
   printYesNo(tx_config.flags & MICROPPM);
 
-  Serial.print(F("D) Telemetry packet size: "));
-  Serial.println(bind_data.serial_downlink);
+  if ((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_MAVLINK) { // Only able to adjust serial downlink when using mavlink telemetry feature
+	Serial.print(F("D) Telemetry packet size: "));
+	Serial.println(bind_data.serial_downlink);
+  }
 
   Serial.print(F("Calculated packet interval: "));
   Serial.print(getInterval(&bind_data));
@@ -999,10 +1001,14 @@ void handleCLImenu(char c)
           }
           break;
         case 11:
-          if ((value >= 1) && (value <= 63)) {
+          if ((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_MAVLINK && (value >= 9) && (value < COM_BUF_MAXSIZE)) {
             bind_data.serial_downlink = value;
             valid_input = 1;
           }
+		  else
+		  {
+            valid_input = 1;
+		  }
           break;
         }
         if (valid_input) {

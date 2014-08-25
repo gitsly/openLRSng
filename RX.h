@@ -823,50 +823,64 @@ retry:
     disablePPM = 0;
 
     if (bind_data.flags & TELEMETRY_MASK) {
-      if ((tx_buf[0] ^ rx_buf[0]) & 0x40) {
+      if ((tx_buf[0] ^ rx_buf[0]) & 0x40) { // 0x40 = 0b01000000
         // resend last message
       } else {
-        tx_buf[0] &= 0xc0;
+        tx_buf[0] &= 0xc0; // 0b11000000
         tx_buf[0] ^= 0x40; // swap sequence as we have new data
-        if (serial_head != serial_tail) {
-          uint8_t bytes = 0;
-          while ((bytes < 8) && (serial_head != serial_tail)) {
-            bytes++;
-            tx_buf[bytes] = serial_buffer[serial_head];
-            serial_head = (serial_head + 1) % SERIAL_BUFSIZE;
-          }
-          tx_buf[0] |= (0x37 + bytes);
-        } else {
-          // tx_buf[0] lowest 6 bits left at 0
-          tx_buf[1] = lastRSSIvalue;
 
-          if (rx_config.pinMapping[ANALOG0_OUTPUT] == PINMAP_ANALOG) {
-            tx_buf[2] = analogRead(OUTPUT_PIN[ANALOG0_OUTPUT]) >> 2;
-#ifdef ANALOG0_OUTPUT_ALT
-          } else if (rx_config.pinMapping[ANALOG0_OUTPUT_ALT] == PINMAP_ANALOG) {
-            tx_buf[2] = analogRead(OUTPUT_PIN[ANALOG0_OUTPUT_ALT]) >> 2;
-#endif
-          } else {
-            tx_buf[2] = 0;
-          }
+		if((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_MAVLINK) {
+			uint8_t bytes = 0;
+			while ((bytes < bind_data.serial_downlink - 1) && (serial_head != serial_tail)) {
+				bytes++;
+				tx_buf[bytes] = serial_buffer[serial_head];
+				serial_head = (serial_head + 1) % SERIAL_BUFSIZE;
+			}
+			tx_buf[0] |= (0x3F & bytes); // 0b00111111,
+			//Serial.print("tx_buf[0]: ");
+			//Serial.println(tx_buf[0]);
+		}
+		else {
+			if (serial_head != serial_tail) {
+			  uint8_t bytes = 0;
+			  while ((bytes < bind_data.serial_downlink - 1) && (serial_head != serial_tail)) {
+				bytes++;
+				tx_buf[bytes] = serial_buffer[serial_head];
+				serial_head = (serial_head + 1) % SERIAL_BUFSIZE;
+			  }
+			  tx_buf[0] |= (0x37 & bytes); // 0b00110111, 
+			} else {
+			  // tx_buf[0] lowest 6 bits left at 0
+			  tx_buf[1] = lastRSSIvalue;
 
-          if (rx_config.pinMapping[ANALOG1_OUTPUT] == PINMAP_ANALOG) {
-            tx_buf[3] = analogRead(OUTPUT_PIN[ANALOG1_OUTPUT]) >> 2;
-#ifdef ANALOG1_OUTPUT_ALT
-          } else if (rx_config.pinMapping[ANALOG1_OUTPUT_ALT] == PINMAP_ANALOG) {
-            tx_buf[3] = analogRead(OUTPUT_PIN[ANALOG1_OUTPUT_ALT]) >> 2;
-#endif
-          } else {
-            tx_buf[3] = 0;
-          }
-          tx_buf[4] = (lastAFCCvalue >> 8);
-          tx_buf[5] = lastAFCCvalue & 0xff;
-          tx_buf[6] = countSetBits(linkQuality & 0x7fff);
-        }
+			  if (rx_config.pinMapping[ANALOG0_OUTPUT] == PINMAP_ANALOG) {
+				tx_buf[2] = analogRead(OUTPUT_PIN[ANALOG0_OUTPUT]) >> 2;
+	#ifdef ANALOG0_OUTPUT_ALT
+			  } else if (rx_config.pinMapping[ANALOG0_OUTPUT_ALT] == PINMAP_ANALOG) {
+				tx_buf[2] = analogRead(OUTPUT_PIN[ANALOG0_OUTPUT_ALT]) >> 2;
+	#endif
+			  } else {
+				tx_buf[2] = 0;
+			  }
+
+			  if (rx_config.pinMapping[ANALOG1_OUTPUT] == PINMAP_ANALOG) {
+				tx_buf[3] = analogRead(OUTPUT_PIN[ANALOG1_OUTPUT]) >> 2;
+	#ifdef ANALOG1_OUTPUT_ALT
+			  } else if (rx_config.pinMapping[ANALOG1_OUTPUT_ALT] == PINMAP_ANALOG) {
+				tx_buf[3] = analogRead(OUTPUT_PIN[ANALOG1_OUTPUT_ALT]) >> 2;
+	#endif
+			  } else {
+				tx_buf[3] = 0;
+			  }
+			  tx_buf[4] = (lastAFCCvalue >> 8);
+			  tx_buf[5] = lastAFCCvalue & 0xff;
+			  tx_buf[6] = countSetBits(linkQuality & 0x7fff);
+			} // else (no serial data available, send misc stuff).
+		}
       }
 #ifdef TEST_NO_ACK_BY_CH1
       if (PPM[0]<900) {
-        tx_packet_async(tx_buf, 9);
+        tx_packet_async(tx_buf, bind_data.serial_downlink);
         while(!tx_done()) {
           checkSerial();
         }

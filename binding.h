@@ -24,7 +24,7 @@
 #define DEFAULT_DATARATE 2
 
 #define DEFAULT_BAUDRATE 115200
-#define DEFAULT_SERIAL_DOWNLINK 9 // 29 is good for APM @ datarate 2
+#define DEFAULT_SERIAL_DOWNLINK 9 // Must be 9 unless using Mavlink telem. max = COM_BUF_MAXSIZE, 29 is good for APM @ datarate 2
 
 // TX_CONFIG flag masks
 #define MUTE_TX             0x10 // do not beep on telemetry loss

@@ -614,12 +614,20 @@ void loop(void)
       rx_buf[i] = spiReadData();
     }
 
-    if ((tx_buf[0] ^ rx_buf[0]) & 0x40) {
+    if ((tx_buf[0] ^ rx_buf[0]) & 0x40) { // 0x40 = 0b01000000
       tx_buf[0] ^= 0x40; // swap sequence to ack
-      if ((rx_buf[0] & 0x38) == 0x38) {
+	 
+	  if ((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_MAVLINK) { // Mavlink Rx only sends transparent serial data
+        const uint8_t byteCount = rx_buf[0] & 0x3F;
+		uint8_t i;
+        for (i = 0; i < byteCount; i++) {
+	        TelemetrySerial.write(rx_buf[i + 1]);
+        }
+	  }
+	  else if ((rx_buf[0] & 0x38) == 0x38) { // 0b00111000
         uint8_t i;
         // transparent serial data...
-        for (i = 0; i<= (rx_buf[0] & 7);) {
+        for (i = 0; i<= (rx_buf[0] & 7);) { // 7 = 0b00000111
           i++;
           if (bind_data.flags & TELEMETRY_FRSKY) {
             frskyUserData(rx_buf[i]);
@@ -627,7 +635,7 @@ void loop(void)
             TelemetrySerial.write(rx_buf[i]);
           }
         }
-      } else if ((rx_buf[0] & 0x3F) == 0) {
+      } else if ((rx_buf[0] & 0x3F) == 0) { // 0x3F = 0b00111111 = 63
         RSSI_rx = rx_buf[1];
         RX_ain0 = rx_buf[2];
         RX_ain1 = rx_buf[3];

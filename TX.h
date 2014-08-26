@@ -583,14 +583,15 @@ void loop(void)
     Red_LED_OFF;
   }
 
-  while (TelemetrySerial.available()) {
-    uint8_t ch = TelemetrySerial.read();
-    if (serialMode) {
-      processChannelsFromSerial(ch);
-    } else if (((serial_tail + 1) % SERIAL_BUFSIZE) != serial_head) {
-      serial_buffer[serial_tail] = ch;
-      serial_tail = (serial_tail + 1) % SERIAL_BUFSIZE;
-    }
+  if (serialMode) {
+    while (TelemetrySerial.available()) {	  
+			processChannelsFromSerial(TelemetrySerial.read());
+		}
+  } else {
+	  while (TelemetrySerial.available() && ((serial_tail + 1) % SERIAL_BUFSIZE) != serial_head) {
+			serial_buffer[serial_tail] = TelemetrySerial.read();
+			serial_tail = (serial_tail + 1) % SERIAL_BUFSIZE;
+	  }
   }
 
 #ifdef __AVR_ATmega32U4__

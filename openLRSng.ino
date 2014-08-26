@@ -73,7 +73,7 @@
 
 
 //####### Transparant serial #######
-#define COM_BUF_MAXSIZE 32 // maximum downlink packet size. Max value is 64, No use having higher than SERIAL_BUFSIZE
+#define COM_BUF_MAXSIZE 32 // maximum downlink packet size. Max value is 64, No use having higher than SERIAL_BUFSIZE, (also 1 byte per rf packet is dedicated for datalength and flags)
 #define SERIAL_BUFSIZE 32
 
 //####### MAVLink #######

@@ -74,7 +74,7 @@
 
 //####### Transparant serial #######
 #define COM_BUF_MAXSIZE 32 // maximum downlink packet size. Max value is 64, No use having higher than SERIAL_BUFSIZE, (also 1 byte per rf packet is dedicated for datalength and flags)
-#define SERIAL_BUFSIZE 32
+#define SERIAL_BUFSIZE 32 // buffer size for outgoing (Tx or Rx) serial (along with this size 64 bytes of Arduino's serial buffer is in place).
 
 //####### MAVLink #######
 #define MAVLINK_INJECT_INTERVAL 100000

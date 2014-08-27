@@ -44,7 +44,7 @@
 
 //####### COMPILATION TARGET #######
 // Enable to compile transmitter code, default is RX (remove leading //)
-//#define COMPILE_TX
+#define COMPILE_TX
 
 //####### TX BOARD TYPE #######
 // Enable one of the lines below (remove leading //)

@@ -786,24 +786,6 @@ retry:
           // We got new data... (not retransmission)
           uint8_t i;
           tx_buf[0] ^= 0x80; // signal that we got it
-/*
-		  if (rx_config.pinMapping[TXD_OUTPUT] == PINMAP_TXD) {
-             for (i = 0; i <= (rx_buf[0] & 7);) {
-               i++;
-               const uint8_t ch = rx_buf[i];
-               Serial.write(ch);
-   #if MAVLINK_INJECT == 1
-               // Check mavlink frames of incoming serial stream before injection of mavlink radio status packet.
-               // Inject packet right after a completed packet
-               if (MavlinkFrameDetector_Parse(ch) && timeUs - last_mavlinkInject_time > MAVLINK_INJECT_INTERVAL) {
-                 // Inject Mavlink radio modem status package.
-                 MAVLink_report(&Serial, 0, compositeRSSI, rxerrors); // uint8_t RSSI_remote, uint16_t RSSI_local, uint16_t rxerrors)
-                 last_mavlinkInject_time = timeUs;
-               }
-   #endif
-			}
-
-*/
 
 					if (rx_config.pinMapping[TXD_OUTPUT] == PINMAP_TXD) {
 
@@ -816,8 +798,7 @@ retry:
 								const uint8_t ch = rx_buf[i];
 								Serial.write(ch);
 								if (MavlinkFrameDetector_Parse(ch) && timeUs - last_mavlinkInject_time > MAVLINK_INJECT_INTERVAL) {
-									// Inject Mavlink radio modem status package.
-									MAVLink_report(space, 0, compositeRSSI, rxerrors); // uint8_t RSSI_remote, uint16_t RSSI_local, uint16_t rxerrors)
+									MAVLink_report(space, 0, smoothRSSI, rxerrors);
 									last_mavlinkInject_time = timeUs;
 								}
 							}

@@ -68,16 +68,16 @@ static void mavlink_crc(uint8_t* buf)
 
 
 // return available space in rx buffer as a percentage
-uint8_t	serial_read_space()
+uint8_t	serial_space(uint8_t available, uint8_t max)
 {
-	uint16_t space = SERIAL_BUFSIZE /*- Serial.available()*/;
-	space = (100 * (space / 8)) / (SERIAL_BUFSIZE / 8);
+	uint16_t space = max - available;
+	space = (100 * (space / 8)) / (max / 8);
 	return space;
 }
 
 
 /// send a MAVLink status report packet
-void MAVLink_report(/*Serial* serialPort,*/ uint8_t RSSI_remote, uint16_t RSSI_local, uint16_t rxerrors)
+void MAVLink_report(uint8_t space, uint8_t RSSI_remote, uint16_t RSSI_local, uint16_t rxerrors)
 {
 	g_mavlinkBuffer[0] = 254;
 	g_mavlinkBuffer[1] = sizeof(struct mavlink_RADIO_v10);
@@ -96,7 +96,7 @@ void MAVLink_report(/*Serial* serialPort,*/ uint8_t RSSI_remote, uint16_t RSSI_l
 	struct mavlink_RADIO_v10 *m = (struct mavlink_RADIO_v10 *)&g_mavlinkBuffer[MAV_HEADER_SIZE];
 	m->rxerrors = rxerrors; // errors.rx_errors;
 	m->fixed    = 0; //errors.corrected_packets;
-	m->txbuf    = serial_read_space(); //serial_read_space();
+	m->txbuf    = space; //serial_read_space();
 	m->rssi     = RSSI_local; //statistics.average_rssi;
 	m->remrssi  = RSSI_remote; //remote_statistics.average_rssi;
 	m->noise    = 0; //statistics.average_noise;

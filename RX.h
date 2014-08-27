@@ -790,14 +790,13 @@ retry:
 					if (rx_config.pinMapping[TXD_OUTPUT] == PINMAP_TXD) {
 
 						if ((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_MAVLINK) {
-							uint8_t circularBufferAvailable = abs(serial_head - serial_tail); // space in the circular buffer
-							const uint8_t space = serial_space(circularBufferAvailable + Serial.available(), SERIAL_BUFSIZE + 64); // include Arduino internal buffer in calculations.
-
 							for (i = 0; i <= (rx_buf[0] & 7);) {
 								i++;
 								const uint8_t ch = rx_buf[i];
 								Serial.write(ch);
 								if (MavlinkFrameDetector_Parse(ch) && timeUs - last_mavlinkInject_time > MAVLINK_INJECT_INTERVAL) {
+									uint8_t circularBufferAvailable = abs(serial_head - serial_tail); // space in the circular buffer
+									const uint8_t space = serial_space(circularBufferAvailable + Serial.available(), SERIAL_BUFSIZE + 64); // include Arduino internal buffer in calculations.
 									MAVLink_report(space, 0, smoothRSSI, rxerrors);
 									last_mavlinkInject_time = timeUs;
 								}

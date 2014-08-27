@@ -620,19 +620,20 @@ void loop(void)
 	 
 	  if ((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_MAVLINK) { // Mavlink Rx only sends transparent serial data
         const uint8_t byteCount = rx_buf[0] & 0x3F;
-				uint8_t circularBufferAvailable = abs(serial_head - serial_tail); // space in the circular buffer
-				const uint8_t space = serial_space(circularBufferAvailable + TelemetrySerial.available(), SERIAL_BUFSIZE + 64); // include Arduino internal buffer in calculations.
 
 				uint8_t i;
         for (i = 0; i < byteCount; i++) {
 					const uint8_t ch = rx_buf[i + 1];
 	        TelemetrySerial.write(ch);
 					if (MavlinkFrameDetector_Parse(ch) && lastTelemetry - last_mavlinkInject_time > MAVLINK_INJECT_INTERVAL) {
+						uint8_t circularBufferAvailable = abs(serial_head - serial_tail); // space in the circular buffer
+						const uint8_t space = serial_space(circularBufferAvailable + TelemetrySerial.available(), SERIAL_BUFSIZE + 64); // include Arduino internal buffer in calculations.
 						MAVLink_report(space, 0, RSSI_tx, rxerrors);
 						last_mavlinkInject_time = lastTelemetry;
 					}
 
         }
+				
 	  }
 	  else if ((rx_buf[0] & 0x38) == 0x38) { // 0b00111000
         uint8_t i;

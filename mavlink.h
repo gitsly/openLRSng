@@ -104,6 +104,15 @@ void MAVLink_report(uint8_t space, uint8_t RSSI_remote, uint16_t RSSI_local, uin
 
 	mavlink_crc(g_mavlinkBuffer);
 
+#ifdef COMPILE_TX
+	#define MavlinkSerialPort TelemetrySerial
+#else
+	#define MavlinkSerialPort Serial
+#endif
+
+	MavlinkSerialPort.write(g_mavlinkBuffer, sizeof(g_mavlinkBuffer));
+
+	//Serial.peek() ? 
 	//if (serialPort->txspace() >= sizeof(g_mavlinkBuffer)) 		// don't cause an overflow
 	//{
 		//serialPort->write(g_mavlinkBuffer, sizeof(g_mavlinkBuffer));

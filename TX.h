@@ -2,7 +2,9 @@
  * OpenLRSng transmitter code
  ****************************************************/
 
-uint32_t last_mavlinkInject_time = 0;
+uint32_t mavlink_last_inject_time = 0;
+uint16_t mavlink_debug = 0;
+mavlink_parse_data mavlink_parse_state;
 uint16_t rxerrors = 0;
 
 uint8_t RF_channel = 0;
@@ -410,6 +412,8 @@ void setup(void)
     // ?
   }
   watchdogConfig(WATCHDOG_2S);
+	
+  MavlinkFrameDetector_Reset(&mavlink_parse_state);
 }
 
 uint8_t compositeRSSI(uint8_t rssi, uint8_t linkq)
@@ -625,15 +629,13 @@ void loop(void)
         for (i = 0; i < byteCount; i++) {
 					const uint8_t ch = rx_buf[i + 1];
 	        TelemetrySerial.write(ch);
-					if (MavlinkFrameDetector_Parse(ch) && lastTelemetry - last_mavlinkInject_time > MAVLINK_INJECT_INTERVAL) {
-						uint8_t circularBufferAvailable = abs(serial_head - serial_tail); // space in the circular buffer
-						const uint8_t space = serial_space(circularBufferAvailable + TelemetrySerial.available(), SERIAL_BUFSIZE + 64); // include Arduino internal buffer in calculations.
-						MAVLink_report(space, 0, RSSI_tx, rxerrors);
-						last_mavlinkInject_time = lastTelemetry;
-					}
-
+					//if (MavlinkFrameDetector_Parse(&mavlink_parse_state, ch) && lastTelemetry - mavlink_last_inject_time > MAVLINK_INJECT_INTERVAL) {
+						//uint8_t circularBufferAvailable = abs(serial_head - serial_tail); // space in the circular buffer
+						//const uint8_t space = serial_space(circularBufferAvailable + TelemetrySerial.available(), SERIAL_BUFSIZE + 64); // include Arduino internal buffer in calculations.
+						//MAVLink_report(space, 0, RSSI_tx, mavlink_debug++);
+						//mavlink_last_inject_time = lastTelemetry;
+					//}
         }
-				
 	  }
 	  else if ((rx_buf[0] & 0x38) == 0x38) { // 0b00111000
         uint8_t i;
@@ -658,29 +660,6 @@ void loop(void)
 #endif
         linkQualityRX = rx_buf[6];
       }
-/*
-	  #else if mavlink	
-      // transparent serial data...
-      const uint8_t serialByteCount = rx_buf[0] & 0x3F;
-      if (serialByteCount > 0) {
-        //char dbg[14];
-        //sprintf(dbg, "got: %d", serialByteCount);
-        //TelemetrySerial.println(dbg);
-
-        for (uint8_t i = 1; i <= serialByteCount; i++) {
-          // Check mavlink frames of incoming serial stream before injection of mavlink radio status packet.
-          // Inject packet right after a completed packet
-          const uint8_t ch = rx_buf[i];
-          TelemetrySerial.write(ch);
-          if (frameDetector.Parse(ch) && time - last_mavlinkInject_time > MAVLINK_INJECT_INTERVAL) {
-            // Inject Mavlink radio modem status package.
-            MAVLink_report(&TelemetrySerial, 0, RSSI_tx, rxerrors); // uint8_t RSSI_remote, uint16_t RSSI_local, uint16_t rxerrors)
-            last_mavlinkInject_time = time;
-          }
-        }
-      }
-
-*/
     }
     if (serial_okToSend == 1) {
       serial_okToSend = 2;

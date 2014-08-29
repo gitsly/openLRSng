@@ -2,7 +2,8 @@
  * OpenLRSng receiver code
  ****************************************************/
 
-uint32_t last_mavlinkInject_time = 0;
+uint32_t mavlink_last_inject_time = 0;
+mavlink_parse_data mavlink_parse_state;
 uint16_t rxerrors = 0;
 
 #include <avr/eeprom.h>
@@ -639,7 +640,7 @@ void setup()
   linkAcquired = 0;
   lastPacketTimeUs = micros();
 
-  MavlinkFrameDetector_Reset();
+  MavlinkFrameDetector_Reset(&mavlink_parse_state);
 }
 
 void checkSerial()
@@ -794,11 +795,18 @@ retry:
 								i++;
 								const uint8_t ch = rx_buf[i];
 								Serial.write(ch);
-								if (MavlinkFrameDetector_Parse(ch) && timeUs - last_mavlinkInject_time > MAVLINK_INJECT_INTERVAL) {
+								
+								// Current problem, mavlink code below causes extreme slowdown when connecting in missionplanner.
+								// 1. Test with reporting constant space of 50%
+								// 2. Check timing.
+								// 3. Output debug info into radio status package (diagnose in MissionPlanner), e.g. use rxerrors for number of injections, average buffer space.
+								// 4. try send only small (1byte +) data, see if it comes in.
+								
+								if (MavlinkFrameDetector_Parse(&mavlink_parse_state, ch) && timeUs - mavlink_last_inject_time > MAVLINK_INJECT_INTERVAL) {
 									uint8_t circularBufferAvailable = abs(serial_head - serial_tail); // space in the circular buffer
 									const uint8_t space = serial_space(circularBufferAvailable + Serial.available(), SERIAL_BUFSIZE + 64); // include Arduino internal buffer in calculations.
 									MAVLink_report(space, 0, smoothRSSI, rxerrors);
-									last_mavlinkInject_time = timeUs;
+									mavlink_last_inject_time = timeUs;
 								}
 							}
 						}

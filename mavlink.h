@@ -15,7 +15,7 @@ struct mavlink_RADIO_v10 {
 #define MAVLINK_MSG_ID_RADIO 166
 #define MAVLINK_RADIO_CRC_EXTRA 21
 #define MAV_HEADER_SIZE 6
-#define MAV_MAX_PACKET_LENGTH  (MAV_HEADER_SIZE + sizeof(struct mavlink_RADIO_v10) + 2)
+#define MAV_MAX_PACKET_LENGTH  (MAV_HEADER_SIZE + sizeof(struct mavlink_RADIO_v10) + 2) // 17
 
 
 static uint8_t g_mavlinkBuffer[MAV_MAX_PACKET_LENGTH];
@@ -45,7 +45,7 @@ static uint8_t g_sequenceNumber = 0;
 static void mavlink_crc(uint8_t* buf)
 {
 	register uint8_t length = buf[1];
-    uint16_t sum = 0xFFFF;
+  uint16_t sum = 0xFFFF;
 	uint8_t i, stoplen;
 
 	stoplen = length + MAV_HEADER_SIZE + 1;
@@ -76,6 +76,12 @@ uint8_t	serial_space(uint8_t available, uint8_t max)
 }
 
 
+#ifdef COMPILE_TX
+#define MavlinkSerialPort TelemetrySerial
+#else
+#define MavlinkSerialPort Serial
+#endif
+
 /// send a MAVLink status report packet
 void MAVLink_report(uint8_t space, uint8_t RSSI_remote, uint16_t RSSI_local, uint16_t rxerrors)
 {
@@ -96,7 +102,7 @@ void MAVLink_report(uint8_t space, uint8_t RSSI_remote, uint16_t RSSI_local, uin
 	struct mavlink_RADIO_v10 *m = (struct mavlink_RADIO_v10 *)&g_mavlinkBuffer[MAV_HEADER_SIZE];
 	m->rxerrors = rxerrors; // errors.rx_errors;
 	m->fixed    = 0; //errors.corrected_packets;
-	m->txbuf    = space; //serial_read_space();
+	m->txbuf    = 25; //serial_read_space();
 	m->rssi     = RSSI_local; //statistics.average_rssi;
 	m->remrssi  = RSSI_remote; //remote_statistics.average_rssi;
 	m->noise    = 0; //statistics.average_noise;
@@ -104,15 +110,8 @@ void MAVLink_report(uint8_t space, uint8_t RSSI_remote, uint16_t RSSI_local, uin
 
 	mavlink_crc(g_mavlinkBuffer);
 
-#ifdef COMPILE_TX
-	#define MavlinkSerialPort TelemetrySerial
-#else
-	#define MavlinkSerialPort Serial
-#endif
-
 	MavlinkSerialPort.write(g_mavlinkBuffer, sizeof(g_mavlinkBuffer));
 
-	//Serial.peek() ? 
 	//if (serialPort->txspace() >= sizeof(g_mavlinkBuffer)) 		// don't cause an overflow
 	//{
 		//serialPort->write(g_mavlinkBuffer, sizeof(g_mavlinkBuffer));

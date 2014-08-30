@@ -102,7 +102,7 @@ void MAVLink_report(uint8_t space, uint8_t RSSI_remote, uint16_t RSSI_local, uin
 	struct mavlink_RADIO_v10 *m = (struct mavlink_RADIO_v10 *)&g_mavlinkBuffer[MAV_HEADER_SIZE];
 	m->rxerrors = rxerrors; // errors.rx_errors;
 	m->fixed    = 0; //errors.corrected_packets;
-	m->txbuf    = 25; //serial_read_space();
+	m->txbuf    = space; //serial_read_space();
 	m->rssi     = RSSI_local; //statistics.average_rssi;
 	m->remrssi  = RSSI_remote; //remote_statistics.average_rssi;
 	m->noise    = 0; //statistics.average_noise;

@@ -72,9 +72,9 @@ struct mavlink_parse_data
 	//}
 
 
-
+	// TODO: optimize for size and speed (unify identical switch cases, have smaller struct. Possible when not needing actual data.
 	// Returns true if a mavlink frame has been detected.
-	bool MavlinkFrameDetector_Parse(mavlink_parse_data* md, uint8_t ch)
+	uint8_t MavlinkFrameDetector_Parse(mavlink_parse_data* md, uint8_t ch)
 	{
 		switch (md->m_state)
 		{
@@ -126,9 +126,9 @@ struct mavlink_parse_data
 			md->m_CRC |= (uint16_t)ch << 8;
 			md->m_state = MavParse_Idle;
 			//return m_CRC == m_accumulatedCRC;
-			return true;
+			return 1;
 		}
-		return false;
+		return 0;
 	}
 		 
 

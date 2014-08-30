@@ -4,6 +4,9 @@
 
 uint32_t mavlink_last_inject_time = 0;
 mavlink_parse_data mavlink_parse_state;
+
+uint32_t dbgTime = 0;
+
 uint16_t rxerrors = 0;
 
 #include <avr/eeprom.h>
@@ -802,13 +805,21 @@ retry:
 								// 3. Output debug info into radio status package (diagnose in MissionPlanner), e.g. use rxerrors for number of injections, average buffer space.
 								// 4. try send only small (1byte +) data, see if it comes in.
 								
-								if (MavlinkFrameDetector_Parse(&mavlink_parse_state, ch) && timeUs - mavlink_last_inject_time > MAVLINK_INJECT_INTERVAL) {
-									uint8_t circularBufferAvailable = abs(serial_head - serial_tail); // space in the circular buffer
-									const uint8_t space = serial_space(circularBufferAvailable + Serial.available(), SERIAL_BUFSIZE + 64); // include Arduino internal buffer in calculations.
+								if (MavlinkFrameDetector_Parse(&mavlink_parse_state, ch) /*&& timeUs - mavlink_last_inject_time > MAVLINK_INJECT_INTERVAL*/) {
+									//uint8_t circularBufferAvailable = abs(serial_head - serial_tail); // space in the circular buffer
+									//const uint8_t space = serial_space(circularBufferAvailable + Serial.available(), SERIAL_BUFSIZE + 64); // include Arduino internal buffer in calculations.
+									
+									uint8_t space = serial_space(Serial.available(), 64);
 									MAVLink_report(space, 0, smoothRSSI, rxerrors);
 									mavlink_last_inject_time = timeUs;
+
+									Red_LED_ON // Indicate packet detected.
+									dbgTime = timeUs;
 								}
 							}
+							
+							if (timeUs - dbgTime > 100000)
+								Red_LED_OFF
 						}
 						else
 						{

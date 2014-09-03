@@ -630,8 +630,8 @@ void loop(void)
 					const uint8_t ch = rx_buf[i + 1];
 	        TelemetrySerial.write(ch);
 					//if (MavlinkFrameDetector_Parse(&mavlink_parse_state, ch) && lastTelemetry - mavlink_last_inject_time > MAVLINK_INJECT_INTERVAL) {
-						//uint8_t circularBufferAvailable = abs(serial_head - serial_tail); // space in the circular buffer
-						//const uint8_t space = serial_space(circularBufferAvailable + TelemetrySerial.available(), SERIAL_BUFSIZE + 64); // include Arduino internal buffer in calculations.
+						
+						//const uint8_t space = serial_space(serialAvailable() + TelemetrySerial.available(), SERIAL_BUFSIZE + 64); // include Arduino internal buffer in calculations.
 						//MAVLink_report(space, 0, RSSI_tx, mavlink_debug++);
 						//mavlink_last_inject_time = lastTelemetry;
 					//}

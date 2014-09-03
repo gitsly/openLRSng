@@ -395,7 +395,7 @@ uint8_t rx_buf[21]; // RX buffer (uplink)
 // type 0x00 normal servo, 0x01 failsafe set
 // type 0x38..0x3f uplinkked serial data
 
-uint8_t tx_buf[COM_BUF_MAXSIZE]; // TX buffer (downlink)(type plus 8 x data)
+uint8_t tx_buf[COM_BUF_MAXSIZE]; // TX buffer (downlink)(1 byte reserved for transmit flags and data length)
 // First byte is meta
 // MSB..LSB [1 bit uplink seq] [1bit downlink seqno] [6b telemtype]
 // 0x00 link info [RSSI] [AFCC]*2 etc...
@@ -646,12 +646,41 @@ void setup()
   MavlinkFrameDetector_Reset(&mavlink_parse_state);
 }
 
+uint8_t serialAvailable()
+{
+	if (serial_head <= serial_tail)
+		return serial_tail - serial_head;
+	return SERIAL_BUFSIZE - serial_head + serial_tail;		
+}
+
 void checkSerial()
 {
   while (Serial.available() && (((serial_tail + 1) % SERIAL_BUFSIZE) != serial_head)) {
     serial_buffer[serial_tail] = Serial.read();
     serial_tail = (serial_tail + 1) % SERIAL_BUFSIZE;
   }
+	
+	//if (Serial.available())
+	//{
+		//uint8_t ch = Serial.read();
+//
+		//if (ch == '1' && (((serial_tail + 1) % SERIAL_BUFSIZE) != serial_head))
+		//{
+			//serial_tail = (serial_tail + 1) % SERIAL_BUFSIZE; // Insert
+			//serial_buffer[serial_tail] = ch;
+		//}
+		//else if (ch == '2' && serial_head != serial_tail)
+			//serial_head = (serial_head + 1) % SERIAL_BUFSIZE; // Take from buffer
+		//
+		//uint8_t bytesInBuf = serialAvailable();
+		//Serial.print("serbuf: ");
+		//Serial.println(bytesInBuf);
+		//
+		//while (Serial.available())
+			//Serial.read();
+	//}
+	
+	   
 }
 
 void slaveHop()
@@ -800,26 +829,32 @@ retry:
 								Serial.write(ch);
 								
 								// Current problem, mavlink code below causes extreme slowdown when connecting in missionplanner.
-								// 1. Test with reporting constant space of 50%
-								// 2. Check timing.
-								// 3. Output debug info into radio status package (diagnose in MissionPlanner), e.g. use rxerrors for number of injections, average buffer space.
-								// 4. try send only small (1byte +) data, see if it comes in.
+								// X. Test with reporting constant space of 50%
+								// 2. Output debug info into radio status package (diagnose in MissionPlanner), e.g. use rxerrors for number of injections, average buffer space.
+								// 3. try send only small (1byte +) data, see if it comes in.
+								// 4. try with higher datarate see if lost packets still is a problem or if its something else.
+								// 5. Monitor Mavlink output from RX.
+								// 6. lit RED led whenever serial buffer is full.
+								// 7. EEPROM log number of overflows in the serial buffer.
+								// 8. Diagnose why s: X, c:1
+								//		a: Ensure that the bytes available calculation is correct
 								
-								if (MavlinkFrameDetector_Parse(&mavlink_parse_state, ch) /*&& timeUs - mavlink_last_inject_time > MAVLINK_INJECT_INTERVAL*/) {
-									//uint8_t circularBufferAvailable = abs(serial_head - serial_tail); // space in the circular buffer
-									//const uint8_t space = serial_space(circularBufferAvailable + Serial.available(), SERIAL_BUFSIZE + 64); // include Arduino internal buffer in calculations.
+								if (MavlinkFrameDetector_Parse(&mavlink_parse_state, ch) && timeUs - mavlink_last_inject_time > MAVLINK_INJECT_INTERVAL) {
+								
+									const uint8_t space = serial_space(serialAvailable() + Serial.available(), SERIAL_BUFSIZE + 64); // include Arduino internal buffer in calculations. Function in common.h
+
+									// DEBUG: output serial buffer stats into the incoming MAVLINK stream (will not destroy any mavlink packet since it's between frames and will be discarded by the MAV.									
+									#ifdef DEBUG_MAVLINK
+									Serial.print("c:");
+									Serial.println(circularBufferAvailable);
+									Serial.print("s:");
+									Serial.println(serialAvailable());
+									#endif
 									
-									uint8_t space = serial_space(Serial.available(), 64);
 									MAVLink_report(space, 0, smoothRSSI, rxerrors);
 									mavlink_last_inject_time = timeUs;
-
-									Red_LED_ON // Indicate packet detected.
-									dbgTime = timeUs;
 								}
 							}
-							
-							if (timeUs - dbgTime > 100000)
-								Red_LED_OFF
 						}
 						else
 						{
@@ -854,6 +889,16 @@ retry:
 				bytes++;
 				tx_buf[bytes] = serial_buffer[serial_head];
 				serial_head = (serial_head + 1) % SERIAL_BUFSIZE;
+				
+				/*
+				  // TODO: DEBUG: indicate by litting LED every full mavlink packet leaving RX to TX dest.
+					Red_LED_ON // Indicate packet detected.
+					dbgTime = timeUs;
+													
+					if (timeUs - dbgTime > 100000)
+					Red_LED_OFF
+
+				*/
 			}
 			tx_buf[0] |= (0x3F & bytes); // 0b00111111,
 			//Serial.print("tx_buf[0]: ");

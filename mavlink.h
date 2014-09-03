@@ -111,6 +111,8 @@ void MAVLink_report(uint8_t space, uint8_t RSSI_remote, uint16_t RSSI_local, uin
 	mavlink_crc(g_mavlinkBuffer);
 
 	MavlinkSerialPort.write(g_mavlinkBuffer, sizeof(g_mavlinkBuffer));
+	//MavlinkSerialPort.flush();
+
 
 	//if (serialPort->txspace() >= sizeof(g_mavlinkBuffer)) 		// don't cause an overflow
 	//{

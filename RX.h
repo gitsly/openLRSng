@@ -4,8 +4,7 @@
 
 uint32_t mavlink_last_inject_time = 0;
 mavlink_parse_data mavlink_parse_state;
-
-uint32_t dbgTime = 0;
+uint8_t space_smooth = 100;
 
 uint16_t rxerrors = 0;
 
@@ -823,35 +822,38 @@ retry:
 					if (rx_config.pinMapping[TXD_OUTPUT] == PINMAP_TXD) {
 
 						if ((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_MAVLINK) {
+							
+							const uint8_t cav = serialAvailable();
+							const uint8_t ser = Serial.available();
+							const uint8_t space = serial_space(cav + ser, SERIAL_BUFSIZE + 64); // include Arduino internal buffer in calculations. Function in common.h
+
+							space_smooth = (((uint16_t)space_smooth * 31 + (uint16_t)space * 1) / 32);
+
 							for (i = 0; i <= (rx_buf[0] & 7);) {
 								i++;
 								const uint8_t ch = rx_buf[i];
 								Serial.write(ch);
 								
-								// Current problem, mavlink code below causes extreme slowdown when connecting in missionplanner.
-								// X. Test with reporting constant space of 50%
-								// 2. Output debug info into radio status package (diagnose in MissionPlanner), e.g. use rxerrors for number of injections, average buffer space.
-								// 3. try send only small (1byte +) data, see if it comes in.
-								// 4. try with higher datarate see if lost packets still is a problem or if its something else.
-								// 5. Monitor Mavlink output from RX.
-								// 6. lit RED led whenever serial buffer is full.
-								// 7. EEPROM log number of overflows in the serial buffer.
-								// 8. Diagnose why s: X, c:1
-								//		a: Ensure that the bytes available calculation is correct
-								
 								if (MavlinkFrameDetector_Parse(&mavlink_parse_state, ch) && timeUs - mavlink_last_inject_time > MAVLINK_INJECT_INTERVAL) {
 								
-									const uint8_t space = serial_space(serialAvailable() + Serial.available(), SERIAL_BUFSIZE + 64); // include Arduino internal buffer in calculations. Function in common.h
 
 									// DEBUG: output serial buffer stats into the incoming MAVLINK stream (will not destroy any mavlink packet since it's between frames and will be discarded by the MAV.									
 									#ifdef DEBUG_MAVLINK
 									Serial.print("c:");
-									Serial.println(circularBufferAvailable);
+									Serial.println(cav);
+									
 									Serial.print("s:");
-									Serial.println(serialAvailable());
+									Serial.print(ser);
+									
+									Serial.print(" ");
+									Serial.print(space);
+									Serial.print("% ");
+									
+									Serial.print("o: ");
+									Serial.println(serialBufferOverflows);
 									#endif
 									
-									MAVLink_report(space, 0, smoothRSSI, rxerrors);
+									MAVLink_report(space_smooth, 0, smoothRSSI, rxerrors);
 									mavlink_last_inject_time = timeUs;
 								}
 							}

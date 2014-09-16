@@ -311,11 +311,11 @@ static inline void checkFS(void)
 uint8_t tx_buf[21];
 uint8_t rx_buf[9];
 
-#define SERIAL_BUFSIZE 32
-uint8_t serial_buffer[SERIAL_BUFSIZE];
+#define SERIAL_BUF_RX_SIZE 96
+#define SERIAL_BUF_TX_SIZE 64
+uint8_t serial_rxbuffer[SERIAL_BUF_RX_SIZE];
+uint8_t serial_txbuffer[SERIAL_BUF_TX_SIZE];
 uint8_t serial_resend[9];
-uint8_t serial_head;
-uint8_t serial_tail;
 uint8_t serial_okToSend; // 2 if it is ok to send serial instead of servo
 
 void setup(void)
@@ -398,8 +398,6 @@ void setup(void)
   rfmSetChannel(RF_channel);
   rx_reset();
 
-  serial_head = 0;
-  serial_tail = 0;
   serial_okToSend = 0;
 
   for (uint8_t i = 0; i <= activeProfile; i++) {
@@ -620,9 +618,9 @@ void loop(void)
     uint8_t ch = TelemetrySerial.read();
     if (serialMode) {
       processChannelsFromSerial(ch);
-    } else if (((serial_tail + 1) % SERIAL_BUFSIZE) != serial_head) {
+    } else if (((serial_tail + 1) % SERIAL_BUF_RX_SIZE) != serial_head) {
       serial_buffer[serial_tail] = ch;
-      serial_tail = (serial_tail + 1) % SERIAL_BUFSIZE;
+      serial_tail = (serial_tail + 1) % SERIAL_BUF_RX_SIZE;
     }
   }
 
@@ -726,7 +724,7 @@ void loop(void)
           bytes++;
           tx_buf[bytes] = serial_buffer[serial_head];
           serial_resend[bytes] = serial_buffer[serial_head];
-          serial_head = (serial_head + 1) % SERIAL_BUFSIZE;
+          serial_head = (serial_head + 1) % SERIAL_BUF_RX_SIZE;
         }
         tx_buf[0] |= (0x37 + bytes);
         serial_resend[0] = bytes;

@@ -471,10 +471,10 @@ uint8_t tx_buf[9]; // TX buffer (downlink)(type plus 8 x data)
 // 0x00 link info [RSSI] [AFCC]*2 etc...
 // type 0x38-0x3f downlink serial data 1-8 bytes
 
-#define SERIAL_BUFSIZE 32
-uint8_t serial_buffer[SERIAL_BUFSIZE];
-uint8_t serial_head;
-uint8_t serial_tail;
+#define SERIAL_BUF_RX_SIZE 96
+#define SERIAL_BUF_TX_SIZE 64
+uint8_t serial_rxbuffer[SERIAL_BUF_RX_SIZE];
+uint8_t serial_txbuffer[SERIAL_BUF_TX_SIZE];
 
 uint8_t hopcount;
 
@@ -596,7 +596,7 @@ void setup()
   pinMode(0, INPUT);   // Serial Rx
   pinMode(1, OUTPUT);  // Serial Tx
 
-  Serial.begin(115200);
+  Serial.begin(115200, serial_rxbuffer, SERIAL_BUF_RX_SIZE, serial_txbuffer, SERIAL_BUF_TX_SIZE);
   rxReadEeprom();
   failsafeLoad();
   Serial.print("OpenLRSng RX starting ");
@@ -684,17 +684,17 @@ void setup()
 
   if ((rx_config.pinMapping[TXD_OUTPUT] == PINMAP_SPKTRM) ||
       (rx_config.pinMapping[TXD_OUTPUT] == PINMAP_SUMD)) {
-    Serial.begin(115200);
+    Serial.begin(115200, serial_rxbuffer, SERIAL_BUF_RX_SIZE, serial_txbuffer, SERIAL_BUF_TX_SIZE);
   } else if (rx_config.pinMapping[TXD_OUTPUT] == PINMAP_SBUS) {
-    Serial.begin(100000);
+    Serial.begin(100000, serial_rxbuffer, SERIAL_BUF_RX_SIZE, serial_txbuffer, SERIAL_BUF_TX_SIZE);
     UCSR0C |= 1<<UPM01; // set even parity
   } else if ((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_FRSKY) {
-    Serial.begin(9600);
+    Serial.begin(9600, serial_rxbuffer, SERIAL_BUF_RX_SIZE, serial_txbuffer, SERIAL_BUF_TX_SIZE);
   } else {
     if (bind_data.serial_baudrate < 10) {
-      Serial.begin(9600);
+      Serial.begin(9600, serial_rxbuffer, SERIAL_BUF_RX_SIZE, serial_txbuffer, SERIAL_BUF_TX_SIZE);
     } else {
-      Serial.begin(bind_data.serial_baudrate);
+      Serial.begin(bind_data.serial_baudrate, serial_rxbuffer, SERIAL_BUF_RX_SIZE, serial_txbuffer, SERIAL_BUF_TX_SIZE);
     }
   }
 
@@ -709,19 +709,9 @@ void setup()
     UCSR0B &= 0xF7; //disable serial TXD
   }
 
-  serial_head = 0;
-  serial_tail = 0;
   linkAcquired = 0;
   lastPacketTimeUs = micros();
 
-}
-
-void checkSerial()
-{
-  while (Serial.available() && (((serial_tail + 1) % SERIAL_BUFSIZE) != serial_head)) {
-    serial_buffer[serial_tail] = Serial.read();
-    serial_tail = (serial_tail + 1) % SERIAL_BUFSIZE;
-  }
 }
 
 void slaveHop()
@@ -773,8 +763,6 @@ void loop()
     init_rfm(0);
     to_rx_mode();
   }
-
-  checkSerial();
 
   timeUs = micros();
 
@@ -882,12 +870,11 @@ retry:
       } else {
         tx_buf[0] &= 0xc0;
         tx_buf[0] ^= 0x40; // swap sequence as we have new data
-        if (serial_head != serial_tail) {
+        if (Serial.available() > 0) {
           uint8_t bytes = 0;
-          while ((bytes < 8) && (serial_head != serial_tail)) {
+          while ((bytes < 8) && Serial.available() > 0) {
             bytes++;
-            tx_buf[bytes] = serial_buffer[serial_head];
-            serial_head = (serial_head + 1) % SERIAL_BUFSIZE;
+            tx_buf[bytes] = (uint8_t)Serial.read();
           }
           tx_buf[0] |= (0x37 + bytes);
         } else {
@@ -922,13 +909,11 @@ retry:
       if (PPM[0]<900) {
         tx_packet_async(tx_buf, 9);
         while(!tx_done()) {
-          checkSerial();
         }
       }
 #else
       tx_packet_async(tx_buf, 9);
       while(!tx_done()) {
-        checkSerial();
       }
 #endif
 

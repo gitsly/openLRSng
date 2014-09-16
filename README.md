@@ -116,8 +116,16 @@ TRANSMITTER HW:
   - TX_BOARD_TYPE 6 (Arduino Leonardo)
     - DTFUHF/HawkEye deluxe TX
 
+  - TX_BOARD_TYPE 7 (RX as TX)
+    - Brotronics PowerTowerRX
+
+  - RX_BOARD_TYPE 8 (RX as TX)
+    - openLRSng microRX
+
 RECEIVER HW:
 ============
+  - RX_BOARD_TYPE 2 (TX module as RX) (328P 16MHz)
+
   - RX_BOARD_TYPE 3 (Arduino Mini/nano 328 16MHz)
     - Flytron openLRS RX
     - OrangeRX UHF RX (NOTE both LEDs are RED!!)
@@ -125,6 +133,12 @@ RECEIVER HW:
 
   - RX_BOARD_TYPE 5 (Arduino Mini/nano 328 16MHz)
     - DTFUHF/HawkEye 4ch/6ch RX
+
+  - RX_BOARD_TYPE 7
+    - Brotronics PowerTowerRX
+
+  - RX_BOARD_TYPE 8
+    - openLRSng microRX
 
   Receiver pin functiontions are mapped using the configurator or CLI interface.
 

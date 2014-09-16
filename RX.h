@@ -25,6 +25,7 @@ uint8_t  compositeRSSI = 0;
 uint16_t lastAFCCvalue = 0;
 
 uint16_t linkQuality = 0;
+uint8_t  linkQ;
 
 uint8_t  ppmCountter = 0;
 uint16_t ppmSync = 40000;
@@ -61,24 +62,47 @@ void outputDownAll()
   PORTD &= clearMask.D;
 }
 
+#if (F_CPU == 16000000)
+#define PWM_MULTIPLIER 2
+#define PPM_PULSELEN   600
+#define PWM_DEJITTER   32
+#define PPM_FRAMELEN   40000
+#elif (F_CPU == 8000000)
+#define PWM_MULTIPLIER 1
+#define PPM_PULSELEN   300
+#define PWM_DEJITTER   16
+#define PPM_FRAMELEN   20000
+#else
+#error F_CPU not supported
+#endif
+
+
 volatile uint16_t nextICR1;
 
 ISR(TIMER1_OVF_vect)
 {
   if (ppmCountter < ppmChannels) {
     ICR1 = nextICR1;
-    nextICR1 = servoBits2Us(PPM[ppmCountter]) * 2;
+    nextICR1 = servoBits2Us(PPM[ppmCountter]) * PWM_MULTIPLIER;
     ppmSync -= nextICR1;
-    if (ppmSync < (rx_config.minsync * 2)) {
-      ppmSync = rx_config.minsync * 2;
+    if (ppmSync < (rx_config.minsync * PWM_MULTIPLIER)) {
+      ppmSync = rx_config.minsync * PWM_MULTIPLIER;
     }
     if ((disablePPM) || ((rx_config.flags & PPM_MAX_8CH) && (ppmCountter >= 8))) {
+#ifdef USE_OCR1B
+      OCR1B = 65535; //do not generate a pulse
+#else
       OCR1A = 65535; //do not generate a pulse
+#endif
     } else {
-      OCR1A = nextICR1 - 600;
+#ifdef USE_OCR1B
+      OCR1B = nextICR1 - PPM_PULSELEN;
+#else
+      OCR1A = nextICR1 - PPM_PULSELEN;
+#endif
     }
 
-    while (TCNT1 < 32);
+    while (TCNT1 < PWM_DEJITTER);
     outputDownAll();
     if ((!disablePWM) && (ppmCountter > 0)) {
       outputUp(ppmCountter - 1);
@@ -89,13 +113,21 @@ ISR(TIMER1_OVF_vect)
     ICR1 = nextICR1;
     nextICR1 = ppmSync;
     if (disablePPM) {
+#ifdef USE_OCR1B
+      OCR1B = 65535; //do not generate a pulse
+#else
       OCR1A = 65535; //do not generate a pulse
+#endif
     } else {
-      OCR1A = nextICR1 - 600;
+#ifdef USE_OCR1B
+      OCR1B = nextICR1 - PPM_PULSELEN;
+#else
+      OCR1A = nextICR1 - PPM_PULSELEN;
+#endif
     }
-    ppmSync = 40000;
+    ppmSync = PPM_FRAMELEN;
 
-    while (TCNT1 < 32);
+    while (TCNT1 < PWM_DEJITTER);
     outputDownAll();
     if (!disablePWM) {
       outputUp(ppmChannels - 1);
@@ -116,21 +148,43 @@ uint16_t RSSI2Bits(uint8_t rssi)
   return ret;
 }
 
+void set_PPM_rssi()
+{
+  if (rx_config.RSSIpwm < 48) {
+    uint8_t out;
+    switch (rx_config.RSSIpwm & 0x30) {
+    case 0x00:
+      out = compositeRSSI;
+      break;
+    case 0x10:
+      out = (linkQ << 4);
+      break;
+    default:
+      out = smoothRSSI;
+      break;
+    }
+    PPM[rx_config.RSSIpwm & 0x0f] = RSSI2Bits(out);
+  } else if (rx_config.RSSIpwm < 63) {
+    PPM[(rx_config.RSSIpwm & 0x0f)] = RSSI2Bits(linkQ << 4);
+    PPM[(rx_config.RSSIpwm & 0x0f)+1] = RSSI2Bits(smoothRSSI);
+  }
+}
+
 void set_RSSI_output()
 {
-  uint8_t linkq = countSetBits(linkQuality & 0x7fff);
-  if (linkq == 15) {
+  linkQ = countSetBits(linkQuality & 0x7fff);
+  if (linkQ == 15) {
     // RSSI 0 - 255 mapped to 192 - ((255>>2)+192) == 192-255
-    compositeRSSI = (smoothRSSI >> 2) + 192;
+    compositeRSSI = (smoothRSSI >> 1) + 128;
   } else {
-    // linkquality gives 0 to 14*13 == 182
-    compositeRSSI = linkq * 13;
+    // linkquality gives 0 to 14*9 == 126
+    compositeRSSI = linkQ * 9;
   }
-  if (rx_config.RSSIpwm < 16) {
-    cli();
-    PPM[rx_config.RSSIpwm] = RSSI2Bits(compositeRSSI);
-    sei();
-  }
+
+  cli();
+  set_PPM_rssi();
+  sei();
+
   if (rx_config.pinMapping[RSSI_OUTPUT] == PINMAP_RSSI) {
     if ((compositeRSSI == 0) || (compositeRSSI == 255)) {
       TCCR2A &= ~(1 << COM2B1); // disable RSSI PWM output
@@ -146,11 +200,15 @@ void failsafeApply()
 {
   if (failsafePPM[0] != 0xffff) {
     for (int16_t i = 0; i < PPM_CHANNELS; i++) {
-      if (i != rx_config.RSSIpwm) {
-        cli();
-        PPM[i] = failsafePPM[i];
-        sei();
+      if (i == (rx_config.RSSIpwm & 0x0f)) {
+        continue;
       }
+      if ((i == (rx_config.RSSIpwm & 0x0f) + 1) && (rx_config.RSSIpwm > 47)) {
+        continue;
+      }
+      cli();
+      PPM[i] = failsafePPM[i];
+      sei();
     }
   }
 }
@@ -160,7 +218,10 @@ void setupOutputs()
   uint8_t i;
 
   ppmChannels = getChannelCount(&bind_data);
-  if (rx_config.RSSIpwm == ppmChannels) {
+  if ((rx_config.RSSIpwm & 0x0f) == ppmChannels) {
+    ppmChannels += 1;
+  }
+  if ((rx_config.RSSIpwm > 47) && ((rx_config.RSSIpwm & 0x0f) == ppmChannels-1)) {
     ppmChannels += 1;
   }
 
@@ -207,7 +268,11 @@ void setupOutputs()
 
   if (rx_config.pinMapping[PPM_OUTPUT] == PINMAP_PPM) {
     digitalWrite(OUTPUT_PIN[PPM_OUTPUT], HIGH);
+#ifdef USE_OCR1B
+    TCCR1A = (1 << WGM11) | (1 << COM1B1);
+#else
     TCCR1A = (1 << WGM11) | (1 << COM1A1);
+#endif
   } else {
     TCCR1A = (1 << WGM11);
   }
@@ -220,20 +285,30 @@ void setupOutputs()
     pinMode(OUTPUT_PIN[RSSI_OUTPUT], OUTPUT);
     digitalWrite(OUTPUT_PIN[RSSI_OUTPUT], LOW);
     if (rx_config.pinMapping[RSSI_OUTPUT] == PINMAP_RSSI) {
-      TCCR2B = (1 << CS20);
       TCCR2A = (1 << WGM20);
+      TCCR2B = (1 << CS20);
     } else { // LBEEP
       TCCR2A = (1 << WGM21); // mode=CTC
+#if (F_CPU == 16000000)
       TCCR2B = (1 << CS22) | (1 << CS20); // prescaler = 128
+#elif (F_CPU == 8000000)
+      TCCR2B = (1 << CS22); // prescaler = 64
+#else
+#error F_CPU not supported
+#endif
       OCR2A = 62; // 1KHz
     }
   }
 
   TCCR1B = (1 << WGM13) | (1 << WGM12) | (1 << CS11);
+#ifdef USE_OCR1B
+  OCR1B = 65535;  // no pulse =)
+#else
   OCR1A = 65535;  // no pulse =)
+#endif
   ICR1 = 2000; // just initial value, will be constantly updated
-  ppmSync = 40000;
-  nextICR1 = 40000;
+  ppmSync = PPM_FRAMELEN;
+  nextICR1 = PPM_FRAMELEN;
   ppmCountter = 0;
   TIMSK1 |= (1 << TOIE1);
 
@@ -246,9 +321,11 @@ void setupOutputs()
 
 void updateLBeep(bool packetLost)
 {
+#if defined(LLIND_OUTPUT)
   if (rx_config.pinMapping[LLIND_OUTPUT] == PINMAP_LLIND) {
     digitalWrite(OUTPUT_PIN[LLIND_OUTPUT],packetLost);
   }
+#endif
   if (rx_config.pinMapping[RSSI_OUTPUT] == PINMAP_LBEEP) {
     if (packetLost) {
       TCCR2A |= (1 << COM2B0); // enable tone
@@ -752,12 +829,14 @@ retry:
       }
 
       lastAFCCvalue = rfmGetAFCC();
+      Green_LED_ON;
     } else {
       uint8_t ret, slave_buf[22];
       ret = myI2C_readFrom(32, slave_buf, getPacketSize(&bind_data) + 1, MYI2C_WAIT);
       if (ret) {
         slaveState = 255;
         slaveFailedMs = millis();
+        slaveReceived = 0;
         goto retry; //slave failed when reading packet...
       } else {
         memcpy(rx_buf, slave_buf + 1, getPacketSize(&bind_data));
@@ -770,7 +849,6 @@ retry:
     linkQuality |= 1;
 
     Red_LED_OFF;
-    Green_LED_ON;
 
     updateLBeep(false);
 
@@ -796,9 +874,7 @@ retry:
       }
       Serial.println();
 #endif
-      if (rx_config.RSSIpwm < 16) {
-        PPM[rx_config.RSSIpwm] = RSSI2Bits(compositeRSSI);
-      }
+      set_PPM_rssi();
       sei();
       if (rx_buf[0] & 0x01) {
         if (!fs_saved) {
@@ -1031,6 +1107,7 @@ retry:
       // hop slowly to allow resync with TX
       linkQuality = 0;
       willhop = 1;
+      smoothRSSI = 0;
       set_RSSI_output();
       lastPacketTimeUs = timeUs;
     }
@@ -1051,7 +1128,7 @@ retry:
       if ((rx_config.beacon_frequency) && (lastBeaconTimeMs)) {
         if (((timeMs - lastBeaconTimeMs) < 0x80000000) && // last beacon is future during deadtime
             (timeMs - lastBeaconTimeMs) > (1000UL * rx_config.beacon_interval)) {
-          beacon_send();
+          beacon_send((rx_config.flags & STATIC_BEACON));
           init_rfm(0);   // go back to normal RX
           rx_reset();
           lastBeaconTimeMs = millis() | 1; // avoid 0 in time

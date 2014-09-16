@@ -278,7 +278,7 @@ void rxPrint(void)
   Serial.print(F("L) PPM minimum sync (us)  : "));
   Serial.println(rx_config.minsync);
   Serial.print(F("M) PPM RSSI to channel    : "));
-  if (rx_config.RSSIpwm < 16) {
+  if (rx_config.RSSIpwm < 64) {
     Serial.println(rx_config.RSSIpwm + 1);
   } else {
     Serial.println(F("DISABLED"));
@@ -721,7 +721,7 @@ void handleRXmenu(char c)
           if (value == 0) {
             rx_config.RSSIpwm = 255;
             valid_input = 1;
-          } else if (value <= 16) {
+          } else if (value <= 64) {
             rx_config.RSSIpwm = value - 1;
             valid_input = 1;
           }

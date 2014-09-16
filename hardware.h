@@ -29,6 +29,8 @@ typedef struct pinMask {
 #define RX_OLRSNG12CH 0x03
 #define RX_DTFUHF10CH 0x04
 #define RX_PTOWER     0x05
+#define RX_MICRO      0x06
+#define RX_FLYTRONM3  0x07
 
 #define PINMAP_PPM    0x20
 #define PINMAP_RSSI   0x21
@@ -52,7 +54,7 @@ struct rxSpecialPinMap {
   uint8_t type;
 };
 
-#ifdef COMPILE_TX
+#if (COMPILE_TX == 1)
 // Needed by dialog code
 static const char *specialStrs[] = { "PPM","RSSI","SDA","SCL","RXD","TXD","AIN","LBEEP",
                                      "SPKTRM", "SBUS", "SUMD", "LLIND", "", "", "", ""
@@ -64,10 +66,10 @@ static const char *specialStrs[] = { "PPM","RSSI","SDA","SCL","RXD","TXD","AIN",
 
 #if (BOARD_TYPE == 0) // Flytron M1 TX
 #if (__AVR_ATmega328P__ != 1) || (F_CPU != 16000000)
-#error Wrong board selected, select Arduino Pro/Pro Mini 5V/16MHz w/ ATMega328
+#warning Possibly wrong board selected, select Arduino Pro/Pro Mini 5V/16MHz w/ ATMega328
 #endif
 
-#ifndef COMPILE_TX
+#if (COMPILE_TX != 1)
 #error TX module cannot be used as RX
 #endif
 
@@ -147,10 +149,10 @@ void setupRfmInterrupt()
 
 #if (BOARD_TYPE == 1) // Flytron M1 RX
 #if (__AVR_ATmega328P__ != 1) || (F_CPU != 16000000)
-#error Wrong board selected, select Arduino Pro/Pro Mini 5V/16MHz w/ ATMega328
+#warning Possibly wrong board selected, select Arduino Pro/Pro Mini 5V/16MHz w/ ATMega328
 #endif
 
-#ifndef COMPILE_TX
+#if (COMPILE_TX != 1)
 #error M1 RX not verified yet
 #endif
 
@@ -231,28 +233,16 @@ void setupRfmInterrupt()
 
 #if (BOARD_TYPE == 2)
 #if (__AVR_ATmega328P__ != 1) || (F_CPU != 16000000)
-#error Wrong board selected, select Arduino Pro/Pro Mini 5V/16MHz w/ ATMega328
+#warning Possibly wrong board selected, select Arduino Pro/Pro Mini 5V/16MHz w/ ATMega328
 #endif
 
-#ifndef COMPILE_TX
-#error TX module cannot be used as RX
-#endif
-
-#define TelemetrySerial Serial
-
+#if (COMPILE_TX == 1)
 #define PPM_IN           3
 #define RF_OUT_INDICATOR A0
 #define BUZZER_ACT       10
 #define BTN              11
-#define Red_LED          13
-#define Green_LED        12
-
-#define Red_LED_ON  PORTB |= _BV(5);
-#define Red_LED_OFF  PORTB &= ~_BV(5);
-
-#define Green_LED_ON   PORTB |= _BV(4);
-#define Green_LED_OFF  PORTB &= ~_BV(4);
-
+#define TX_AIN0          A4 // SDA
+#define TX_AIN1          A5 // SCL
 #define PPM_Pin_Interrupt_Setup  PCMSK2 = 0x08;PCICR|=(1<<PCIE2);
 #define PPM_Signal_Interrupt PCINT2_vect
 #define PPM_Signal_Edge_Check ((PIND & 0x08)==0x08)
@@ -273,6 +263,59 @@ void buzzerOn(uint16_t freq)
 }
 
 #define buzzerOff(foo) buzzerOn(0)
+
+#else // RX operation
+#define USE_OCR1B // OC1A is used for RFM22, so we use OC1B instead which is buzzer ;)
+#define PPM_OUT 10 // OC1B this is the buzzer input
+#define RSSI_OUT 3 // PD3 OC2B -this is the PPM pin on the radio connection
+
+#define OUTPUTS 7 // outputs available
+
+const pinMask_t OUTPUT_MASKS[OUTPUTS] = {
+  {0x04,0x00,0x00},{0x00,0x00,0x08},{0x00,0x01,0x00}, // PPM, RSSI, CH1
+  {0x00,0x10,0x00},{0x00,0x20,0x00},{0x00,0x00,0x01}, // SDA, SCL, RXD
+  {0x00,0x00,0x02},                                   // TXD
+};
+
+const uint8_t OUTPUT_PIN[OUTPUTS] = { 10, 3, A0, A4, A5, 0, 1};
+
+#define PPM_OUTPUT  0
+#define RSSI_OUTPUT 1
+#define LLIND_OUTPUT 2
+#define ANALOG0_OUTPUT 3
+#define ANALOG1_OUTPUT 4
+#define SDA_OUTPUT 3
+#define SCL_OUTPUT 4
+#define RXD_OUTPUT 5
+#define TXD_OUTPUT 6
+
+struct rxSpecialPinMap rxSpecialPins[] = {
+  { 0, PINMAP_PPM},
+  { 1, PINMAP_LBEEP},
+  { 1, PINMAP_RSSI},
+  { 2, PINMAP_LLIND},
+  { 3, PINMAP_SDA},
+  { 3, PINMAP_ANALOG}, // AIN0
+  { 4, PINMAP_SCL},
+  { 4, PINMAP_ANALOG}, // AIN1
+  { 5, PINMAP_RXD},
+  { 6, PINMAP_TXD},
+  { 6, PINMAP_SPKTRM},
+  { 6, PINMAP_SBUS},
+  { 6, PINMAP_SUMD},
+};
+#endif
+
+#define TelemetrySerial Serial
+
+#define Red_LED          13
+#define Green_LED        12
+
+#define Red_LED_ON  PORTB |= _BV(5);
+#define Red_LED_OFF  PORTB &= ~_BV(5);
+
+#define Green_LED_ON   PORTB |= _BV(4);
+#define Green_LED_OFF  PORTB &= ~_BV(4);
 
 //## RFM22B Pinouts for Public Edition (M2)
 #define  nIRQ_1 (PIND & 0x04)==0x04 //D2
@@ -315,15 +358,18 @@ void setupRfmInterrupt()
 
 #if (BOARD_TYPE == 3)
 #if (__AVR_ATmega328P__ != 1) || (F_CPU != 16000000)
-#error Wrong board selected, select Arduino Pro/Pro Mini 5V/16MHz w/ ATMega328
+#warning Possibly wrong board selected, select Arduino Pro/Pro Mini 5V/16MHz w/ ATMega328
 #endif
 
-#ifdef COMPILE_TX
+#if (COMPILE_TX == 1)
 #define TelemetrySerial Serial
 
 #define USE_ICP1 // use ICP1 for PPM input for less jitter
 
 #define PPM_IN 8 // ICP1
+
+#define TX_AIN0 A4 // SDA
+#define TX_AIN1 A5 // SCL
 
 #define BUZZER_ACT 6
 #define BUZZER_PAS 3
@@ -334,7 +380,13 @@ void buzzerInit()
   pinMode(BUZZER_ACT, OUTPUT);
   digitalWrite(BUZZER_ACT, LOW);
   TCCR2A = (1<<WGM21); // mode=CTC
+#if (F_CPU == 16000000)
   TCCR2B = (1<<CS22) | (1<<CS20); // prescaler = 128
+#elif (F_CPU == 8000000)
+  TCCR2B = (1<<CS22); // prescaler = 64
+#else
+#errror F_CPU Invalid
+#endif
   pinMode(BUZZER_PAS, OUTPUT);
   digitalWrite(BUZZER_PAS, LOW);
 }
@@ -406,7 +458,7 @@ struct rxSpecialPinMap rxSpecialPins[] = {
 #define Red_LED    A3
 #define Green_LED  13
 
-#ifndef COMPILE_TX
+#if (COMPILE_TX != 1)
 #define Red_LED_ON  PORTC |= _BV(3);
 #define Red_LED_OFF  PORTC &= ~_BV(3);
 #define Green_LED_ON  PORTB |= _BV(5);
@@ -461,10 +513,10 @@ void setupRfmInterrupt()
 
 #if (BOARD_TYPE == 4) // kha:s openLRSngTX & clones
 #if (__AVR_ATmega328P__ != 1) || (F_CPU != 16000000)
-#error Wrong board selected, select Arduino Pro/Pro Mini 5V/16MHz w/ ATMega328
+#warning Possibly wrong board selected, select Arduino Pro/Pro Mini 5V/16MHz w/ ATMega328
 #endif
 
-#ifndef COMPILE_TX
+#if (COMPILE_TX != 1)
 #error TX module cannot be used as RX
 #endif
 
@@ -472,6 +524,9 @@ void setupRfmInterrupt()
 
 #define USE_ICP1 // use ICP1 for PPM input for less jitter
 #define PPM_IN 8 // ICP1
+
+#define TX_AIN0 A4 // SDA
+#define TX_AIN1 A5 // SCL
 
 #define BUZZER_PAS 3 // OCR2B
 #define BTN A0
@@ -483,7 +538,13 @@ void setupRfmInterrupt()
 void buzzerInit()
 {
   TCCR2A = (1<<WGM21); // mode=CTC
+#if (F_CPU == 16000000)
   TCCR2B = (1<<CS22) | (1<<CS20); // prescaler = 128
+#elif (F_CPU == 8000000)
+  TCCR2B = (1<<CS22); // prescaler = 64
+#else
+#errror F_CPU Invalid
+#endif
   pinMode(BUZZER_PAS, OUTPUT);
   digitalWrite(BUZZER_PAS, LOW);
 }
@@ -559,16 +620,19 @@ void setupRfmInterrupt()
 
 #if (BOARD_TYPE == 5) // openLRSngRX-4ch
 #if (__AVR_ATmega328P__ != 1) || (F_CPU != 16000000)
-#error Wrong board selected, select Arduino Pro/Pro Mini 5V/16MHz w/ ATMega328
+#warning Possibly wrong board selected, select Arduino Pro/Pro Mini 5V/16MHz w/ ATMega328
 #endif
 
-#ifdef COMPILE_TX
+#if (COMPILE_TX == 1)
 // TX operation
 
 #define TelemetrySerial Serial
 
 #define USE_ICP1 // use ICP1 for PPM input for less jitter
 #define PPM_IN 8 // ICP1
+
+#define TX_AIN0 A4 // SDA
+#define TX_AIN1 A5 // SCL
 
 #define BUZZER_PAS  3  // OCR2B
 #define BUZZER_ACT A5
@@ -579,7 +643,13 @@ void buzzerInit()
   pinMode(BUZZER_ACT, OUTPUT);
   digitalWrite(BUZZER_ACT, LOW);
   TCCR2A = (1<<WGM21); // mode=CTC
+#if (F_CPU == 16000000)
   TCCR2B = (1<<CS22) | (1<<CS20); // prescaler = 128
+#elif (F_CPU == 8000000)
+  TCCR2B = (1<<CS22); // prescaler = 64
+#else
+#errror F_CPU Invalid
+#endif
   pinMode(BUZZER_PAS, OUTPUT);
   digitalWrite(BUZZER_PAS, LOW);
 }
@@ -661,7 +731,7 @@ struct rxSpecialPinMap rxSpecialPins[] = {
 #define Red_LED 6
 #define Green_LED 5
 
-#ifndef COMPILE_TX
+#if (COMPILE_TX != 1)
 #define Red_LED_ON    PORTD |=  _BV(6);
 #define Red_LED_OFF   PORTD &= ~_BV(6);
 #define Green_LED_ON  PORTD |=  _BV(5);
@@ -721,7 +791,7 @@ void setupRfmInterrupt()
 #error Wrong board selected, select Arduino Leonardo
 #endif
 
-#ifndef COMPILE_TX
+#if (COMPILE_TX != 1)
 #error TX module cannot be used as RX
 #endif
 
@@ -729,6 +799,10 @@ void setupRfmInterrupt()
 
 #define USE_ICP1 // use ICP1 for PPM input for less jitter
 #define PPM_IN 4 // ICP1
+
+#define TX_AIN_IS_DIGITAL
+#define TX_AIN0 2 // SDA
+#define TX_AIN1 3 // SCL
 
 #define BUZZER_PAS 10 // OCR4B
 #define BTN A0
@@ -819,16 +893,19 @@ ISR(PCINT0_vect)
 
 #if (BOARD_TYPE == 7) // PowerTowerRX
 #if (__AVR_ATmega328P__ != 1) || (F_CPU != 16000000)
-#error Wrong board selected, select Arduino Pro/Pro Mini 5V/16MHz w/ ATMega328
+#warning Possibly wrong board selected, select Arduino Pro/Pro Mini 5V/16MHz w/ ATMega328
 #endif
 
-#ifdef COMPILE_TX
+#if (COMPILE_TX == 1)
 // TX operation
 
 #define TelemetrySerial Serial
 
 #define USE_ICP1 // use ICP1 for PPM input for less jitter
 #define PPM_IN 8 // ICP1
+
+#define TX_AIN0 A4 // SDA
+#define TX_AIN1 A5 // SCL
 
 #define BUZZER_ACT A1
 #define BTN     A5 // Shorting SCL to GND will bind
@@ -907,7 +984,7 @@ struct rxSpecialPinMap rxSpecialPins[] = {
 #define Red_LED 6
 #define Green_LED 5
 
-#ifndef COMPILE_TX
+#if (COMPILE_TX != 1)
 #define Red_LED_ON    PORTD |=  _BV(6);
 #define Red_LED_OFF   PORTD &= ~_BV(6);
 #define Green_LED_ON  PORTD |=  _BV(5);
@@ -920,6 +997,155 @@ struct rxSpecialPinMap rxSpecialPins[] = {
 #define Green_LED_ON  { PORTD |=  _BV(5); PORTC |=  _BV(1); }
 #define Green_LED_OFF { PORTD &= ~_BV(5); PORTC &= ~_BV(1); }
 #endif
+
+#define buzzerOff(foo) buzzerOn(0)
+
+//## RFM22B Pinouts for Public Edition (M2)
+#define  nIRQ_1 (PIND & 0x04)==0x04 //D2
+#define  nIRQ_0 (PIND & 0x04)==0x00 //D2
+
+#define  nSEL_on PORTD |= (1<<4) //D4
+#define  nSEL_off PORTD &= 0xEF //D4
+
+#define  SCK_on  PORTB |= _BV(5)  //B5
+#define  SCK_off PORTB &= ~_BV(5) //B5
+
+#define  SDI_on  PORTB |= _BV(3)  //B3
+#define  SDI_off PORTB &= ~_BV(3) //B3
+
+#define  SDO_1 (PINB & _BV(4)) == _BV(4) //B4
+#define  SDO_0 (PINB & _BV(4)) == 0x00  //B4
+
+#define SDO_pin 12
+#define SDI_pin 11
+#define SCLK_pin 13
+#define IRQ_pin 2
+#define nSel_pin 4
+
+void setupSPI()
+{
+  pinMode(SDO_pin, INPUT);   //SDO
+  pinMode(SDI_pin, OUTPUT);   //SDI
+  pinMode(SCLK_pin, OUTPUT);   //SCLK
+  pinMode(IRQ_pin, INPUT);   //IRQ
+  pinMode(nSel_pin, OUTPUT);   //nSEL
+}
+
+#define IRQ_interrupt 0
+void setupRfmInterrupt()
+{
+  attachInterrupt(IRQ_interrupt, RFM22B_Int, FALLING);
+}
+
+#endif
+
+#if (BOARD_TYPE == 8) // openLRSmicroRX
+#if (__AVR_ATmega328P__ != 1) || (F_CPU != 16000000)
+#warning Possibly wrong board selected, select Arduino Pro/Pro Mini 5V/16MHz w/ ATMega328
+#endif
+
+#if (COMPILE_TX == 1)
+// TX operation
+
+#define TelemetrySerial Serial
+
+#define USE_ICP1 // use ICP1 for PPM input for less jitter
+#define PPM_IN 8 // ICP1
+
+#define TX_AIN0 A4 // SDA
+#define TX_AIN1 A5 // SCL
+
+#define BUZZER_PAS  3  // OCR2B
+#define BUZZER_ACT A5
+#define BTN     A4
+
+void buzzerInit()
+{
+  pinMode(BUZZER_ACT, OUTPUT);
+  digitalWrite(BUZZER_ACT, LOW);
+  TCCR2A = (1<<WGM21); // mode=CTC
+#if (F_CPU == 16000000)
+  TCCR2B = (1<<CS22) | (1<<CS20); // prescaler = 128
+#elif (F_CPU == 8000000)
+  TCCR2B = (1<<CS22); // prescaler = 64
+#else
+#errror F_CPU Invalid
+#endif
+  pinMode(BUZZER_PAS, OUTPUT);
+  digitalWrite(BUZZER_PAS, LOW);
+}
+
+void buzzerOn(uint16_t freq)
+{
+  if (freq) {
+    uint32_t ocr = 125000L / freq;
+    digitalWrite(BUZZER_ACT,HIGH);
+    if (ocr>255) {
+      ocr=255;
+    }
+    if (!ocr) {
+      ocr=1;
+    }
+    OCR2A = ocr;
+    TCCR2A |= (1<<COM2B0); // enable output
+  } else {
+    digitalWrite(BUZZER_ACT,LOW);
+    TCCR2A &= ~(1<<COM2B0); // disable output
+  }
+}
+
+#else
+// RX operation
+#define PPM_OUT 9 // OCP1A
+#define RSSI_OUT 3 // PD3 OC2B
+
+#define PWM_1 9 // PB1 - also PPM
+#define PWM_2 A4 // PC4 - also SDA
+#define PWM_3 3 // PD3 - also RSSI
+#define PWM_4 A5 // PC5 - also SCL
+
+#define OUTPUTS 6 // outputs available
+
+const pinMask_t OUTPUT_MASKS[OUTPUTS] = {
+  {0x02,0x00,0x00}, {0x00,0x10,0x00}, {0x00,0x00,0x08},// CH1/PPM, CH2/SDA, CH3/RSSI
+  {0x00,0x20,0x00}, {0x00,0x00,0x01}, {0x00,0x00,0x02},// CH4/SCL, CH7/RXD, CH8/TXD
+};
+
+#define PPM_OUTPUT 0
+#define RSSI_OUTPUT 2
+#define ANALOG0_OUTPUT 1 // actually input
+#define ANALOG1_OUTPUT 3 // actually input
+#define SDA_OUTPUT 1
+#define SCL_OUTPUT 3
+#define RXD_OUTPUT 4
+#define TXD_OUTPUT 5
+
+const uint8_t OUTPUT_PIN[OUTPUTS] = { 9, A4, 3, A5, 0, 1};
+
+struct rxSpecialPinMap rxSpecialPins[] = {
+  { 0, PINMAP_PPM},
+  { 1, PINMAP_SDA},
+  { 1, PINMAP_ANALOG}, // AIN0
+  { 2, PINMAP_RSSI},
+  { 2, PINMAP_LBEEP},
+  { 3, PINMAP_SCL},
+  { 3, PINMAP_ANALOG}, // AIN1
+  { 4, PINMAP_RXD},
+  { 5, PINMAP_TXD},
+  { 5, PINMAP_SPKTRM},
+  { 5, PINMAP_SBUS},
+  { 5, PINMAP_SUMD},
+};
+
+#endif
+
+#define Red_LED A3
+#define Green_LED A2
+
+#define Red_LED_ON    PORTC |=  _BV(3);
+#define Red_LED_OFF   PORTC &= ~_BV(3);
+#define Green_LED_ON  PORTC |=  _BV(2);
+#define Green_LED_OFF PORTC &= ~_BV(2);
 
 #define buzzerOff(foo) buzzerOn(0)
 

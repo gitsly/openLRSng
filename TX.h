@@ -74,12 +74,20 @@ static inline void processPulse(uint16_t pulse)
     return;
   }
 
+#if (F_CPU == 16000000)
   if (!(tx_config.flags & MICROPPM)) {
     pulse >>= 1; // divide by 2 to get servo value on normal PPM
   }
+#elif (F_CPU == 8000000)
+  if (tx_config.flags & MICROPPM) {
+    pulse<<= 1; //  multiply microppm value by 2
+  }
+#else
+#error F_CPU invalid
+#endif
 
   if (pulse > 2500) {      // Verify if this is the sync pulse (2.5ms)
-    if ((ppmCounter>5) && (ppmCounter!=255)) {
+    if ((ppmCounter>(TX_CONFIG_GETMINCH()?TX_CONFIG_GETMINCH():1)) && (ppmCounter!=255)) {
       uint8_t i;
       for (i=0; i < ppmCounter; i++) {
         PPM[i] = ppmWork.words[i];
@@ -419,11 +427,11 @@ void setup(void)
 uint8_t compositeRSSI(uint8_t rssi, uint8_t linkq)
 {
   if (linkq >= 15) {
-    // RSSI 0 - 255 mapped to 192 - ((255>>2)+192) == 192-255
-    return (rssi >> 2) + 192;
+    // RSSI 0 - 255 mapped to 128 - ((255>>2)+192) == 128-255
+    return (rssi >> 1) + 128;
   } else {
-    // linkquality gives 0 to 14*13 == 182
-    return linkq * 13;
+    // linkquality gives 0 to 14*0 == 126
+    return linkq * 9;
   }
 }
 
@@ -456,7 +464,7 @@ static inline void processSpektrum(uint8_t c)
           ch = ppmWork.words[i] >> 11;
           v = (ppmWork.words[i] & 0x7ff)>>1;
         }
-        if (ch<16) {
+        if (ch < 16) {
           PPM[ch] = v;
         }
 #ifdef DEBUG_DUMP_PPM
@@ -559,6 +567,34 @@ void processChannelsFromSerial(uint8_t c)
     processSBUS(c);
   } else if (serialMode==4) { // SUMD
     processSUMD(c);
+  }
+}
+
+uint16_t getChannel(uint8_t ch)
+{
+  ch = tx_config.chmap[ch];
+  if (ch < 16) {
+    uint16_t v;
+    cli();  // disable interrupts when copying servo positions, to avoid race on 2 byte variable written by ISR
+    v = PPM[ch];
+    sei();
+    return v;
+  } else {
+    switch (ch) {
+#ifdef TX_AIN_IS_DIGITAL
+    case 16:
+      return digitalRead(TX_AIN0) ? 1012 : 12;
+    case 17:
+      return digitalRead(TX_AIN1) ? 1012 : 12;
+#else
+    case 16:
+      return analogRead(TX_AIN0);
+    case 17:
+      return analogRead(TX_AIN1);
+#endif
+    default:
+      return 512;
+    }
   }
 }
 
@@ -685,7 +721,7 @@ void loop(void)
     while (PPM[2] > 1013);
 #endif
 
-    if (1 /*ppmAge < 8*/) {
+    if ((ppmAge < 8) || (!TX_CONFIG_GETMINCH())) {
       ppmAge++;
 
       if (lastTelemetry) {
@@ -728,6 +764,7 @@ void loop(void)
         tx_buf[0] |= (0x37 + serial_resend[0]);
         serial_okToSend = 3; // sent but not acked
       } else {
+        uint16_t PPMout[16];
         if (FSstate == 2) {
           tx_buf[0] |= 0x01; // save failsafe
           Red_LED_ON
@@ -741,9 +778,10 @@ void loop(void)
             serial_okToSend = 4;  // resend
           }
         }
-        cli(); // disable interrupts when copying servo positions, to avoid race on 2 byte variable
-        packChannels(bind_data.flags & 7, PPM, tx_buf + 1);
-        sei();
+        for (uint8_t i=0; i < 16; i++) {
+          PPMout[i] = getChannel(tx_config.chmap[i]);
+        }
+        packChannels(bind_data.flags & 7, PPMout, tx_buf + 1);
       }
       //Green LED will be on during transmission
       Green_LED_ON;

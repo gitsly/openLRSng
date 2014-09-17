@@ -43,7 +43,7 @@ public:
 	uint8_t mask;					///< buffer size mask for pointer wrap
 	uint8_t *bytes;					///< pointer to allocated buffer
 
-	void setBuffer(uint8_t* bufPtr, uint8_t size)
+	__attribute__ ((noinline)) void setBuffer(uint8_t* bufPtr, uint8_t size)
 	{
 		const uint8_t max_buffer_size = 0xff;
 		uint16_t	msk;
@@ -63,7 +63,7 @@ public:
 		mask = msk;
 	}
 	
-	void freeBuffer()
+	__attribute__ ((noinline)) void freeBuffer()
 	{
 		head = tail = 0;
 		mask = 0;
@@ -170,7 +170,7 @@ _BV(UDRIE##_num))
 class SerialPort : public Stream
 {
 public:
-	SerialPort(const uint8_t portNumber, volatile uint8_t *ubrrh, volatile uint8_t *ubrrl, volatile uint8_t *ucsra, volatile uint8_t *ucsrb, const uint8_t u2x, const uint8_t portEnableBits, const uint8_t portTxBits)
+	__attribute__ ((noinline)) SerialPort(const uint8_t portNumber, volatile uint8_t *ubrrh, volatile uint8_t *ubrrl, volatile uint8_t *ucsra, volatile uint8_t *ucsrb, const uint8_t u2x, const uint8_t portEnableBits, const uint8_t portTxBits)
 	{
 		_open = false;
 		_ubrrh = ubrrh;
@@ -185,13 +185,13 @@ public:
 		_serialInitialized |= (1 << portNumber);
 	}
 
-	void setBuffers(uint8_t* rxPtr, uint8_t rxSize, uint8_t* txPtr, uint8_t txSize)
+	__attribute__ ((noinline)) void setBuffers(uint8_t* rxPtr, uint8_t rxSize, uint8_t* txPtr, uint8_t txSize)
 	{
 		_rxBuffer->setBuffer(rxPtr, rxSize);
 		_txBuffer->setBuffer(txPtr, txSize);
 	}
 
-	void begin(long baud)
+	__attribute__ ((noinline)) void begin(long baud)
 	{
 		uint16_t ubrr;
 		bool use_u2x = true;
@@ -236,7 +236,7 @@ public:
 		*_ucsrb |= _portEnableBits;
 	}
 
-	void end()
+	__attribute__ ((noinline)) void end()
 	{
 		*_ucsrb &= ~(_portEnableBits | _portTxBits);
 		_rxBuffer->freeBuffer();
@@ -244,7 +244,7 @@ public:
 		_open = false;
 	}
 
-	virtual size_t write(uint8_t c)
+	__attribute__ ((noinline)) virtual size_t write(uint8_t c)
 	{
 		uint16_t i;
 
@@ -264,26 +264,26 @@ public:
 		return 1;
 	}
 	
-	uint16_t rxOverflowCounter()
+	__attribute__ ((noinline)) uint16_t rxOverflowCounter()
 	{
 		if (!_open)
 			return 0;
 		return _rxBuffer->overflow;
 	}
 
-	int available()
+	__attribute__ ((noinline)) int available()
 	{
 		if (!_open)
 			return (-1);
 		return ((_rxBuffer->head - _rxBuffer->tail) & _rxBuffer->mask);
 	}
 
-	uint8_t txspace()
+	__attribute__ ((noinline)) uint8_t txspace()
 	{
 		return ((_txBuffer->mask+1) - ((_txBuffer->head - _txBuffer->tail) & _txBuffer->mask));
 	}
 
-	int read()
+	__attribute__ ((noinline)) int read()
 	{
 		uint8_t c;
 		// if the head and tail are equal, the buffer is empty
@@ -296,7 +296,8 @@ public:
 		return c;
 	}
 
-	int peek()
+
+	__attribute__ ((noinline)) int peek()
 	{
 		// if the head and tail are equal, the buffer is empty
 		if (!_open || (_rxBuffer->head == _rxBuffer->tail))
@@ -305,7 +306,7 @@ public:
 		return (_rxBuffer->bytes[_rxBuffer->tail]);
 	}
 
-	void flush()
+	__attribute__ ((noinline)) void flush()
 	{
 		// don't reverse this or there may be problems if the RX interrupt
 		// occurs after reading the value of _rxBuffer->head but before writing
@@ -337,10 +338,8 @@ private:
 	uint8_t	_portTxBits;			///const < tx data and completion interrupt enables
 
 	// ring buffers
-public: // TMP TMP: should be private
 	RingBuffer* _rxBuffer;
 	RingBuffer* _txBuffer;
-private:
 	bool 			_open;
 
 	// whether writes to the port should block waiting
@@ -353,16 +352,3 @@ private:
 
 /// Bit mask for initialized ports
 uint8_t SerialPort::_serialInitialized = 0;
-
-// Predeclarations
-
-/*
-uint8_t available(SerialPort* s);
-uint8_t txspace(SerialPort* s);
-uint8_t read(SerialPort* s);
-void write(uint8_t);
-
-uint8_t peek(SerialPort* s);
-void flush(SerialPort* s);
-uint16_t rxOverflowCounter(SerialPort* s);
-*/

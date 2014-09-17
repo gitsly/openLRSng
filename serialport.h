@@ -185,7 +185,13 @@ public:
 		_serialInitialized |= (1 << portNumber);
 	}
 
-	void begin(long baud, uint8_t* rxPtr, uint8_t rxSize, uint8_t* txPtr, uint8_t txSize)
+	void setBuffers(uint8_t* rxPtr, uint8_t rxSize, uint8_t* txPtr, uint8_t txSize)
+	{
+		_rxBuffer->setBuffer(rxPtr, rxSize);
+		_txBuffer->setBuffer(txPtr, txSize);
+	}
+
+	void begin(long baud)
 	{
 		uint16_t ubrr;
 		bool use_u2x = true;
@@ -195,10 +201,6 @@ public:
 			// close the port in its current configuration, clears _open
 			end();
 		}
-
-		// allocate buffers
-		_rxBuffer->setBuffer(rxPtr, rxSize);
-		_txBuffer->setBuffer(txPtr, txSize);
 
 		// reset buffer pointers
 		_txBuffer->head = _txBuffer->tail = 0;

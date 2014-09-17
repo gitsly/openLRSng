@@ -595,8 +595,9 @@ void setup()
 
   pinMode(0, INPUT);   // Serial Rx
   pinMode(1, OUTPUT);  // Serial Tx
-
-  Serial.begin(115200, serial_rxbuffer, SERIAL_BUF_RX_SIZE, serial_txbuffer, SERIAL_BUF_TX_SIZE);
+	
+	Serial.setBuffers(serial_rxbuffer, SERIAL_BUF_RX_SIZE, serial_txbuffer, SERIAL_BUF_TX_SIZE);
+  Serial.begin(115200);
   rxReadEeprom();
   failsafeLoad();
   Serial.print("OpenLRSng RX starting ");
@@ -684,17 +685,17 @@ void setup()
 
   if ((rx_config.pinMapping[TXD_OUTPUT] == PINMAP_SPKTRM) ||
       (rx_config.pinMapping[TXD_OUTPUT] == PINMAP_SUMD)) {
-    Serial.begin(115200, serial_rxbuffer, SERIAL_BUF_RX_SIZE, serial_txbuffer, SERIAL_BUF_TX_SIZE);
+    Serial.begin(115200);
   } else if (rx_config.pinMapping[TXD_OUTPUT] == PINMAP_SBUS) {
-    Serial.begin(100000, serial_rxbuffer, SERIAL_BUF_RX_SIZE, serial_txbuffer, SERIAL_BUF_TX_SIZE);
+    Serial.begin(100000);
     UCSR0C |= 1<<UPM01; // set even parity
   } else if ((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_FRSKY) {
-    Serial.begin(9600, serial_rxbuffer, SERIAL_BUF_RX_SIZE, serial_txbuffer, SERIAL_BUF_TX_SIZE);
+    Serial.begin(9600);
   } else {
     if (bind_data.serial_baudrate < 10) {
-      Serial.begin(9600, serial_rxbuffer, SERIAL_BUF_RX_SIZE, serial_txbuffer, SERIAL_BUF_TX_SIZE);
+      Serial.begin(9600);
     } else {
-      Serial.begin(bind_data.serial_baudrate, serial_rxbuffer, SERIAL_BUF_RX_SIZE, serial_txbuffer, SERIAL_BUF_TX_SIZE);
+      Serial.begin(bind_data.serial_baudrate);
     }
   }
 

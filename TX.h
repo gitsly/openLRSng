@@ -620,8 +620,8 @@ void loop(void)
 
 
   if (serialMode) {
-		while (TelemetrySerial.available()) {
-			uint8_t ch = TelemetrySerial.read();
+	while (TelemetrySerial.available()) {
+	  uint8_t ch = TelemetrySerial.read();
       processChannelsFromSerial(ch);
     }
   }
@@ -657,8 +657,7 @@ void loop(void)
           if (bind_data.flags & TELEMETRY_FRSKY) {
             frskyUserData(rx_buf[i]);
           } else {
-            //TelemetrySerial.write(rx_buf[i]);
-						TelemetrySerial.println(rx_buf[0] & 7);
+            TelemetrySerial.write(rx_buf[i]);
           }
         }
       } else if ((rx_buf[0] & 0x3F) == 0) {

@@ -1,7 +1,6 @@
 /****************************************************
  * OpenLRSng receiver code
  ****************************************************/
-uint32_t lastDebugMsgTimeUs = 0;
 
 #include <avr/eeprom.h>
 uint8_t RF_channel = 0;
@@ -766,12 +765,6 @@ void loop()
 
   timeUs = micros();
 
-	if (timeUs - lastDebugMsgTimeUs > 2000000)
-	{
-//		Serial.println("RX alive");
-		lastDebugMsgTimeUs = timeUs;
-	}
-
   uint8_t slaveReceived = 0;
   if (5 == readSlaveState()) {
     slaveReceived = 1;
@@ -857,7 +850,6 @@ retry:
             for (i = 0; i <= (rx_buf[0] & 7);) {
               i++;
               Serial.write(rx_buf[i]);
-							//Serial.println(rx_buf[0] & 7);
             }
           }
         }

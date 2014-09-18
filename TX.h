@@ -151,9 +151,7 @@ void bindMode(void)
 
   init_rfm(1);
 
-  while (Serial.available()) {
-    Serial.read();    // flush serial
-  }
+  Serial.flush();
 
   Red_LED_OFF;
 
@@ -372,9 +370,7 @@ void setup(void)
   digitalWrite(BTN, HIGH);
   Red_LED_ON ;
 
-  while (Serial.available()) {
-    Serial.read();
-  }
+	Serial.flush();
 
   Serial.print("OpenLRSng TX starting ");
   printVersion(version);
@@ -385,7 +381,7 @@ void setup(void)
 
   checkBND();
 
-#ifdef __AVR_ATmega32U4__
+#ifdef __AVR_ATmega32U4__ // badzz 
 	TelemetrySerial.setBuffers(serial_rxbuffer, SERIAL_BUF_RX_SIZE, serial_txbuffer, SERIAL_BUF_TX_SIZE);
 #endif
   if (bind_data.serial_baudrate && (bind_data.serial_baudrate < 5)) {
@@ -661,7 +657,8 @@ void loop(void)
           if (bind_data.flags & TELEMETRY_FRSKY) {
             frskyUserData(rx_buf[i]);
           } else {
-            TelemetrySerial.write(rx_buf[i]);
+            //TelemetrySerial.write(rx_buf[i]);
+						TelemetrySerial.println(rx_buf[0] & 7);
           }
         }
       } else if ((rx_buf[0] & 0x3F) == 0) {
@@ -701,7 +698,7 @@ void loop(void)
     while (PPM[2] > 1013);
 #endif
 
-    if ((ppmAge < 8) || (!TX_CONFIG_GETMINCH())) {
+    if (1 || (ppmAge < 8) || (!TX_CONFIG_GETMINCH())) {
       ppmAge++;
 
       if (lastTelemetry) {

@@ -50,7 +50,7 @@ public:
 		uint8_t		shift;
 
 		// init buffer state
-		head = tail = 0;
+		// head = tail = 0; // Also done in begin().
 
 		// Compute the power of 2 greater or equal to the requested buffer size
 		// and then a mask to simplify wrapping operations.  Using __builtin_clz
@@ -63,12 +63,6 @@ public:
 		mask = msk;
 	}
 	
-	__attribute__ ((noinline)) void freeBuffer()
-	{
-		head = tail = 0;
-		mask = 0;
-	}
-
 };
 
 // Used by the per-port interrupt vectors
@@ -239,8 +233,6 @@ public:
 	__attribute__ ((noinline)) void end()
 	{
 		*_ucsrb &= ~(_portEnableBits | _portTxBits);
-		_rxBuffer->freeBuffer();
-		_txBuffer->freeBuffer();
 		_open = false;
 	}
 

@@ -477,9 +477,10 @@ uint8_t tx_buf[COM_BUF_MAXSIZE]; // TX buffer (downlink)(1 byte reserved for tra
 // 0x00 link info [RSSI] [AFCC]*2 etc...
 // type 0x38-0x3f downlink serial data 1-COM_BUF_MAXSIZE bytes
 
-uint8_t serial_buffer[SERIAL_BUFSIZE];
-uint8_t serial_head;
-uint8_t serial_tail;
+#define SERIAL_BUF_RX_SIZE 96
+#define SERIAL_BUF_TX_SIZE 64
+uint8_t serial_rxbuffer[SERIAL_BUF_RX_SIZE];
+uint8_t serial_txbuffer[SERIAL_BUF_TX_SIZE];
 
 uint8_t hopcount;
 
@@ -600,7 +601,8 @@ void setup()
 
   pinMode(0, INPUT);   // Serial Rx
   pinMode(1, OUTPUT);  // Serial Tx
-
+	
+	Serial.setBuffers(serial_rxbuffer, SERIAL_BUF_RX_SIZE, serial_txbuffer, SERIAL_BUF_TX_SIZE);
   Serial.begin(115200);
   rxReadEeprom();
   failsafeLoad();
@@ -703,9 +705,7 @@ void setup()
     }
   }
 
-  while (Serial.available()) {
-    Serial.read();
-  }
+  Serial.flush();
 
   if (rx_config.pinMapping[RXD_OUTPUT]!=PINMAP_RXD) {
     UCSR0B &= 0xEF; //disable serial RXD
@@ -714,49 +714,10 @@ void setup()
     UCSR0B &= 0xF7; //disable serial TXD
   }
 
-  serial_head = 0;
-  serial_tail = 0;
   linkAcquired = 0;
   lastPacketTimeUs = micros();
 
   MavlinkFrameDetector_Reset(&mavlink_parse_state);
-}
-
-uint8_t serialAvailable()
-{
-	if (serial_head <= serial_tail)
-		return serial_tail - serial_head;
-	return SERIAL_BUFSIZE - serial_head + serial_tail;		
-}
-
-void checkSerial()
-{
-  while (Serial.available() && (((serial_tail + 1) % SERIAL_BUFSIZE) != serial_head)) {
-    serial_buffer[serial_tail] = Serial.read();
-    serial_tail = (serial_tail + 1) % SERIAL_BUFSIZE;
-  }
-	
-	//if (Serial.available())
-	//{
-		//uint8_t ch = Serial.read();
-//
-		//if (ch == '1' && (((serial_tail + 1) % SERIAL_BUFSIZE) != serial_head))
-		//{
-			//serial_tail = (serial_tail + 1) % SERIAL_BUFSIZE; // Insert
-			//serial_buffer[serial_tail] = ch;
-		//}
-		//else if (ch == '2' && serial_head != serial_tail)
-			//serial_head = (serial_head + 1) % SERIAL_BUFSIZE; // Take from buffer
-		//
-		//uint8_t bytesInBuf = serialAvailable();
-		//Serial.print("serbuf: ");
-		//Serial.println(bytesInBuf);
-		//
-		//while (Serial.available())
-			//Serial.read();
-	//}
-	
-	   
 }
 
 void slaveHop()
@@ -808,8 +769,6 @@ void loop()
     init_rfm(0);
     to_rx_mode();
   }
-
-  checkSerial();
 
   timeUs = micros();
 
@@ -899,10 +858,7 @@ retry:
 
 						if ((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_MAVLINK) {
 							
-							const uint8_t cav = serialAvailable();
-							const uint8_t ser = Serial.available();
-							const uint8_t space = serial_space(cav + ser, SERIAL_BUFSIZE + 64); // include Arduino internal buffer in calculations. Function in common.h
-
+							const uint8_t space = serial_space(Serial.available(), SERIAL_BUF_RX_SIZE);
 							space_smooth = (((uint16_t)space_smooth * 31 + (uint16_t)space * 1) / 32);
 
 							for (i = 0; i <= (rx_buf[0] & 7);) {
@@ -912,24 +868,16 @@ retry:
 								
 								if (MavlinkFrameDetector_Parse(&mavlink_parse_state, ch) && timeUs - mavlink_last_inject_time > MAVLINK_INJECT_INTERVAL) {
 								
-
 									// DEBUG: output serial buffer stats into the incoming MAVLINK stream (will not destroy any mavlink packet since it's between frames and will be discarded by the MAV.									
 									#ifdef DEBUG_MAVLINK
-									Serial.print("c:");
-									Serial.println(cav);
-									
-									Serial.print("s:");
-									Serial.print(ser);
-									
-									Serial.print(" ");
-									Serial.print(space);
-									Serial.print("% ");
+									Serial.print(space_smooth);
+									Serial.print("%, ");
 									
 									Serial.print("o: ");
-									Serial.println(serialBufferOverflows);
+									Serial.println(Serial.rxOverflowCounter());
 									#endif
 									
-									MAVLink_report(space_smooth, 0, smoothRSSI, rxerrors);
+									MAVLink_report(&Serial, space_smooth, 0, smoothRSSI, rxerrors);
 									mavlink_last_inject_time = timeUs;
 								}
 							}
@@ -963,32 +911,18 @@ retry:
 
 		if((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_MAVLINK) {
 			uint8_t bytes = 0;
-			while ((bytes < bind_data.serial_downlink - 1) && (serial_head != serial_tail)) {
+			while ((bytes < bind_data.serial_downlink - 1) && Serial.available() > 0) {
 				bytes++;
-				tx_buf[bytes] = serial_buffer[serial_head];
-				serial_head = (serial_head + 1) % SERIAL_BUFSIZE;
-				
-				/*
-				  // TODO: DEBUG: indicate by litting LED every full mavlink packet leaving RX to TX dest.
-					Red_LED_ON // Indicate packet detected.
-					dbgTime = timeUs;
-													
-					if (timeUs - dbgTime > 100000)
-					Red_LED_OFF
-
-				*/
+				tx_buf[bytes] = Serial.read();
 			}
 			tx_buf[0] |= (0x3F & bytes); // 0b00111111,
-			//Serial.print("tx_buf[0]: ");
-			//Serial.println(tx_buf[0]);
 		}
 		else {
-			if (serial_head != serial_tail) {
+			if (Serial.available() > 0) {
 			  uint8_t bytes = 0;
-			  while ((bytes < bind_data.serial_downlink - 1) && (serial_head != serial_tail)) {
-				bytes++;
-				tx_buf[bytes] = serial_buffer[serial_head];
-				serial_head = (serial_head + 1) % SERIAL_BUFSIZE;
+			  while ((bytes < bind_data.serial_downlink - 1) && Serial.available() > 0) {
+					bytes++;
+					tx_buf[bytes] = Serial.read();
 			  }
 			  tx_buf[0] |= (0x37 & bytes); // 0b00110111, 
 			} else {
@@ -1024,7 +958,6 @@ retry:
       if (PPM[0]<900) {
         tx_packet_async(tx_buf, bind_data.serial_downlink);
         while(!tx_done()) {
-          checkSerial();
         }
       }
 #else
@@ -1046,7 +979,6 @@ retry:
 */
 
       while(!tx_done()) {
-        checkSerial();
       }
 #endif
 

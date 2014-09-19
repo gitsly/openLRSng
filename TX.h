@@ -157,9 +157,7 @@ void bindMode(void)
 
   init_rfm(1);
 
-  while (Serial.available()) {
-    Serial.read();    // flush serial
-  }
+  Serial.flush();
 
   Red_LED_OFF;
 
@@ -317,10 +315,15 @@ static inline void checkFS(void)
 uint8_t tx_buf[21];
 uint8_t rx_buf[COM_BUF_MAXSIZE];
 
-uint8_t serial_buffer[SERIAL_BUFSIZE];
+#define SERIAL_BUF_RX_SIZE 96
+#define SERIAL_BUF_TX_SIZE 64
+uint8_t serial_rxbuffer[SERIAL_BUF_RX_SIZE];
+uint8_t serial_txbuffer[SERIAL_BUF_TX_SIZE];
+#ifdef __AVR_ATmega32U4__ // Allocate buffer for additional serial port.
+uint8_t serial1_rxbuffer[SERIAL_BUF_RX_SIZE];
+uint8_t serial1_txbuffer[SERIAL_BUF_TX_SIZE];
+#endif
 uint8_t serial_resend[COM_BUF_MAXSIZE];
-uint8_t serial_head;
-uint8_t serial_tail;
 uint8_t serial_okToSend; // 2 if it is ok to send serial instead of servo
 
 void setup(void)
@@ -350,6 +353,7 @@ void setup(void)
 #endif
   buzzerInit();
 
+	Serial.setBuffers(serial_rxbuffer, SERIAL_BUF_RX_SIZE, serial_txbuffer, SERIAL_BUF_TX_SIZE);
 #ifdef __AVR_ATmega32U4__
   Serial.begin(0); // Suppress warning on overflow on Leonardo
 #else
@@ -372,9 +376,7 @@ void setup(void)
   digitalWrite(BTN, HIGH);
   Red_LED_ON ;
 
-  while (Serial.available()) {
-    Serial.read();
-  }
+	Serial.flush();
 
   Serial.print("OpenLRSng TX starting ");
   printVersion(version);
@@ -385,6 +387,9 @@ void setup(void)
 
   checkBND();
 
+#ifdef __AVR_ATmega32U4__ // badzz 
+	TelemetrySerial.setBuffers(serial_rxbuffer, SERIAL_BUF_RX_SIZE, serial_txbuffer, SERIAL_BUF_TX_SIZE);
+#endif
   if (bind_data.serial_baudrate && (bind_data.serial_baudrate < 5)) {
     serialMode = bind_data.serial_baudrate;
     TelemetrySerial.begin((serialMode == 3) ? 100000 : 115200); // SBUS is 100000 rest 115200
@@ -403,8 +408,6 @@ void setup(void)
   rfmSetChannel(RF_channel);
   rx_reset();
 
-  serial_head = 0;
-  serial_tail = 0;
   serial_okToSend = 0;
 
   for (uint8_t i = 0; i <= activeProfile; i++) {
@@ -623,15 +626,12 @@ void loop(void)
     Red_LED_OFF;
   }
 
+
   if (serialMode) {
-    while (TelemetrySerial.available()) {	  
-			processChannelsFromSerial(TelemetrySerial.read());
+		while (TelemetrySerial.available()) {
+				uint8_t ch = TelemetrySerial.read();
+				processChannelsFromSerial(ch);
 		}
-  } else {
-	  while (TelemetrySerial.available() && ((serial_tail + 1) % SERIAL_BUFSIZE) != serial_head) {
-			serial_buffer[serial_tail] = TelemetrySerial.read();
-			serial_tail = (serial_tail + 1) % SERIAL_BUFSIZE;
-	  }
   }
 
 #ifdef __AVR_ATmega32U4__
@@ -721,7 +721,7 @@ void loop(void)
     while (PPM[2] > 1013);
 #endif
 
-    if ((ppmAge < 8) || (!TX_CONFIG_GETMINCH())) {
+    if (1 || (ppmAge < 8) || (!TX_CONFIG_GETMINCH())) {
       ppmAge++;
 
       if (lastTelemetry) {
@@ -740,18 +740,18 @@ void loop(void)
 
       // Construct packet to be sent
       tx_buf[0] &= 0xc0; //preserve seq. bits
-      if ((serial_tail != serial_head) && (serial_okToSend == 2)) {
+      if (TelemetrySerial.available() > 0 && (serial_okToSend == 2)) {
         tx_buf[0] ^= 0x80; // signal new data on line
         uint8_t bytes = 0;
         uint8_t maxbytes = 8;
         if (getPacketSize(&bind_data) < 9) {
           maxbytes = getPacketSize(&bind_data) - 1;
         }
-        while ((bytes < maxbytes) && (serial_head != serial_tail)) {
+        while ((bytes < maxbytes) && TelemetrySerial.available() > 0) {
           bytes++;
-          tx_buf[bytes] = serial_buffer[serial_head];
-          serial_resend[bytes] = serial_buffer[serial_head];
-          serial_head = (serial_head + 1) % SERIAL_BUFSIZE;
+					const uint8_t ch = (uint8_t)TelemetrySerial.read();
+          tx_buf[bytes] = ch;
+          serial_resend[bytes] = ch;
         }
         tx_buf[0] |= (0x37 + bytes);
         serial_resend[0] = bytes;

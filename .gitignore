@@ -10,5 +10,6 @@
 *.o
 *.hex
 libraries/*
+Debug/*
 out
 Debug/*

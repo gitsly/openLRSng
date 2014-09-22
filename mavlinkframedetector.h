@@ -65,6 +65,12 @@ class MavlinkFrameDetector
 		m_state = MavParse_Idle;
 	}
 
+	
+	bool IsIdle() // Returns true if currently no mavlink packet is being parsed.
+	{
+		return m_state == MavParse_Idle;
+	}	
+
 private:
 	enum MavlinkParseState
 	{

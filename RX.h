@@ -857,30 +857,27 @@ retry:
 
 						if ((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_MAVLINK) {
 							
-							//const uint8_t space = serial_space(Serial.available(), SERIAL_BUF_RX_SIZE);
-							//space_smooth = (((uint16_t)space_smooth * 31 + (uint16_t)space * 1) / 32);
-
 							for (i = 0; i <= (rx_buf[0] & 7);) {
 								i++;
 								const uint8_t ch = rx_buf[i];
-								Serial.write(ch);
-								mavlinkFrame.Parse(ch);
 								
-								if (timeUs - mavlink_last_inject_time > MAVLINK_INJECT_INTERVAL) {
-								
-									// DEBUG: output serial buffer stats into the incoming MAVLINK stream (will not destroy any mavlink packet since it's between frames and will be discarded by the MAV.									
-									#ifdef DEBUG_MAVLINK
+								if (mavlinkFrame.IsIdle() && timeUs - mavlink_last_inject_time > MAVLINK_INJECT_INTERVAL) {
+									#ifdef DEBUG_MAVLINK // DEBUG: output serial buffer stats into the incoming MAVLINK stream (will not destroy any mavlink packet since it's between frames and will be discarded by the MAV.
 									Serial.print(space);
 									Serial.print("%, ");
-									
+																	
 									Serial.print("o: ");
 									Serial.println(Serial.rxOverflowCounter());
 									#endif
-									
+																	
 									const uint8_t space = serial_space(Serial.available(), SERIAL_BUF_RX_SIZE);
 									MAVLink_report(&Serial, space, 0, smoothRSSI, rxerrors);
 									mavlink_last_inject_time = timeUs;
 								}
+								
+								Serial.write(ch);
+								mavlinkFrame.Parse(ch);
+								
 							}
 						}
 						else

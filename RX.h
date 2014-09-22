@@ -3,8 +3,7 @@
  ****************************************************/
 
 uint32_t mavlink_last_inject_time = 0;
-mavlink_parse_data mavlink_parse_state;
-uint8_t space_smooth = 100;
+MavlinkFrameDetector mavlinkFrame;
 
 uint16_t rxerrors = 0;
 
@@ -477,7 +476,7 @@ uint8_t tx_buf[COM_BUF_MAXSIZE]; // TX buffer (downlink)(1 byte reserved for tra
 // 0x00 link info [RSSI] [AFCC]*2 etc...
 // type 0x38-0x3f downlink serial data 1-COM_BUF_MAXSIZE bytes
 
-#define SERIAL_BUF_RX_SIZE 96
+#define SERIAL_BUF_RX_SIZE 255
 #define SERIAL_BUF_TX_SIZE 64
 uint8_t serial_rxbuffer[SERIAL_BUF_RX_SIZE];
 uint8_t serial_txbuffer[SERIAL_BUF_TX_SIZE];
@@ -717,7 +716,7 @@ void setup()
   linkAcquired = 0;
   lastPacketTimeUs = micros();
 
-  MavlinkFrameDetector_Reset(&mavlink_parse_state);
+	mavlinkFrame.Reset();
 }
 
 void slaveHop()
@@ -858,26 +857,28 @@ retry:
 
 						if ((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_MAVLINK) {
 							
-							const uint8_t space = serial_space(Serial.available(), SERIAL_BUF_RX_SIZE);
-							space_smooth = (((uint16_t)space_smooth * 31 + (uint16_t)space * 1) / 32);
+							//const uint8_t space = serial_space(Serial.available(), SERIAL_BUF_RX_SIZE);
+							//space_smooth = (((uint16_t)space_smooth * 31 + (uint16_t)space * 1) / 32);
 
 							for (i = 0; i <= (rx_buf[0] & 7);) {
 								i++;
 								const uint8_t ch = rx_buf[i];
 								Serial.write(ch);
+								mavlinkFrame.Parse(ch);
 								
-								if (MavlinkFrameDetector_Parse(&mavlink_parse_state, ch) && timeUs - mavlink_last_inject_time > MAVLINK_INJECT_INTERVAL) {
+								if (timeUs - mavlink_last_inject_time > MAVLINK_INJECT_INTERVAL) {
 								
 									// DEBUG: output serial buffer stats into the incoming MAVLINK stream (will not destroy any mavlink packet since it's between frames and will be discarded by the MAV.									
 									#ifdef DEBUG_MAVLINK
-									Serial.print(space_smooth);
+									Serial.print(space);
 									Serial.print("%, ");
 									
 									Serial.print("o: ");
 									Serial.println(Serial.rxOverflowCounter());
 									#endif
 									
-									MAVLink_report(&Serial, space_smooth, 0, smoothRSSI, rxerrors);
+									const uint8_t space = serial_space(Serial.available(), SERIAL_BUF_RX_SIZE);
+									MAVLink_report(&Serial, space, 0, smoothRSSI, rxerrors);
 									mavlink_last_inject_time = timeUs;
 								}
 							}

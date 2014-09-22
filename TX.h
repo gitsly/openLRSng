@@ -4,7 +4,6 @@
 
 uint32_t mavlink_last_inject_time = 0;
 uint16_t mavlink_debug = 0;
-mavlink_parse_data mavlink_parse_state;
 uint16_t rxerrors = 0;
 
 uint8_t RF_channel = 0;
@@ -423,8 +422,6 @@ void setup(void)
     // ?
   }
   watchdogConfig(WATCHDOG_2S);
-	
-  MavlinkFrameDetector_Reset(&mavlink_parse_state);
 }
 
 uint8_t compositeRSSI(uint8_t rssi, uint8_t linkq)

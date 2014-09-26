@@ -38,16 +38,15 @@ extern class SerialPort serialPort;
 /// Public so the interrupt handlers can see it
 class RingBuffer {
 public:
-	volatile uint8_t head, tail;	///< head and tail pointers
+	volatile uint16_t head, tail;	///< head and tail pointers
 	volatile uint16_t overflow;		///< Incremented every time the buffer can't fit a character.
-	uint8_t mask;					///< buffer size mask for pointer wrap
+	uint16_t mask;					///< buffer size mask for pointer wrap
 	uint8_t *bytes;					///< pointer to allocated buffer
 
-	__attribute__ ((noinline)) void setBuffer(uint8_t* bufPtr, uint8_t size)
+	__attribute__ ((noinline)) void setBuffer(uint8_t* bufPtr, uint16_t size)
 	{
-		const uint8_t max_buffer_size = 0xff;
-		uint16_t	msk;
-		uint8_t		shift;
+		const uint8_t max_buffer_size = 0xffff;
+		uint16_t		shift;
 
 		// init buffer state
 		// head = tail = 0; // Also done in begin().
@@ -59,8 +58,7 @@ public:
 		for (shift = 1; (1U << shift) < min(max_buffer_size, size); shift++);
 		
 		bytes = bufPtr;
-		msk = (1 << shift) - 1;
-		mask = msk;
+		mask = (1 << shift) - 1;
 	}
 	
 };
@@ -75,7 +73,7 @@ RingBuffer __FastSerial__txBuffer[FS_MAX_PORTS];
 ISR(_RXVECTOR, ISR_BLOCK)                                               \
 {                                                                       \
 	uint8_t c;                                                      \
-	uint8_t i;                                                      \
+	uint16_t i;                                                      \
 	/* read the byte as quickly as possible */                      \
 	c = _UDR;                                                       \
 	/* work out where the head will go next */                      \
@@ -179,7 +177,7 @@ public:
 		_serialInitialized |= (1 << portNumber);
 	}
 
-	__attribute__ ((noinline)) void setBuffers(uint8_t* rxPtr, uint8_t rxSize, uint8_t* txPtr, uint8_t txSize)
+	__attribute__ ((noinline)) void setBuffers(uint8_t* rxPtr, uint16_t rxSize, uint8_t* txPtr, uint16_t txSize)
 	{
 		_rxBuffer->setBuffer(rxPtr, rxSize);
 		_txBuffer->setBuffer(txPtr, txSize);
@@ -270,7 +268,7 @@ public:
 		return ((_rxBuffer->head - _rxBuffer->tail) & _rxBuffer->mask);
 	}
 
-	__attribute__ ((noinline)) uint8_t txspace()
+	__attribute__ ((noinline)) uint16_t txspace()
 	{
 		return ((_txBuffer->mask+1) - ((_txBuffer->head - _txBuffer->tail) & _txBuffer->mask));
 	}

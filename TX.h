@@ -314,8 +314,8 @@ static inline void checkFS(void)
 uint8_t tx_buf[21];
 uint8_t rx_buf[COM_BUF_MAXSIZE];
 
-#define SERIAL_BUF_RX_SIZE 96
-#define SERIAL_BUF_TX_SIZE 64
+#define SERIAL_BUF_RX_SIZE 64
+#define SERIAL_BUF_TX_SIZE 128
 uint8_t serial_rxbuffer[SERIAL_BUF_RX_SIZE];
 uint8_t serial_txbuffer[SERIAL_BUF_TX_SIZE];
 #ifdef __AVR_ATmega32U4__ // Allocate buffer for additional serial port.

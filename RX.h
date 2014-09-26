@@ -5,6 +5,9 @@
 uint32_t mavlink_last_inject_time = 0;
 MavlinkFrameDetector mavlinkFrame;
 
+bool debugToggle = false;
+uint16_t lastOverflowCounter = 0;
+
 uint16_t rxerrors = 0;
 
 #include <avr/eeprom.h>
@@ -477,7 +480,7 @@ uint8_t tx_buf[COM_BUF_MAXSIZE]; // TX buffer (downlink)(1 byte reserved for tra
 // type 0x38-0x3f downlink serial data 1-COM_BUF_MAXSIZE bytes
 
 #define SERIAL_BUF_RX_SIZE 255
-#define SERIAL_BUF_TX_SIZE 64
+#define SERIAL_BUF_TX_SIZE 64 // 63 crashes the RX after some short time, Investigate mask usage in serialport.
 uint8_t serial_rxbuffer[SERIAL_BUF_RX_SIZE];
 uint8_t serial_txbuffer[SERIAL_BUF_TX_SIZE];
 
@@ -756,6 +759,19 @@ uint16_t rxMaster = 0;
 uint32_t rxStatsMs = 0;
 #endif
 
+void toggleRedLed()
+{
+	if (debugToggle == true)
+	{
+		Red_LED_ON;
+	}
+	else
+	{
+		Red_LED_OFF;
+	}
+	debugToggle = !debugToggle;
+}
+
 //############ MAIN LOOP ##############
 void loop()
 {
@@ -810,6 +826,31 @@ retry:
 
     updateLBeep(false);
 
+		if ((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_MAVLINK
+		&& mavlinkFrame.IsIdle()
+		&& timeUs - mavlink_last_inject_time > MAVLINK_INJECT_INTERVAL) {
+			#ifdef DEBUG_MAVLINK // DEBUG: output serial buffer stats into the incoming MAVLINK stream (will not destroy any mavlink packet since it's between frames and will be discarded by the MAV.
+			Serial.print(space);
+			Serial.print("%, ");
+				
+			Serial.print("o: ");
+			Serial.println(Serial.rxOverflowCounter());
+			#endif
+				
+			const uint8_t space = serial_space(Serial.available(), SERIAL_BUF_RX_SIZE);
+			MAVLink_report(&Serial, space, 0, smoothRSSI, rxerrors);
+
+			mavlink_last_inject_time = timeUs;
+			
+
+			uint16_t overflow = Serial.rxOverflowCounter();
+			if (overflow - lastOverflowCounter > 0)
+				toggleRedLed();
+			lastOverflowCounter = overflow;
+		}
+			
+
+
 #ifdef SLAVE_STATISTICS
     if (5 == readSlaveState()) {
       if (RF_Mode == Received) {
@@ -860,24 +901,8 @@ retry:
 							for (i = 0; i <= (rx_buf[0] & 7);) {
 								i++;
 								const uint8_t ch = rx_buf[i];
-								
-								if (mavlinkFrame.IsIdle() && timeUs - mavlink_last_inject_time > MAVLINK_INJECT_INTERVAL) {
-									#ifdef DEBUG_MAVLINK // DEBUG: output serial buffer stats into the incoming MAVLINK stream (will not destroy any mavlink packet since it's between frames and will be discarded by the MAV.
-									Serial.print(space);
-									Serial.print("%, ");
-																	
-									Serial.print("o: ");
-									Serial.println(Serial.rxOverflowCounter());
-									#endif
-																	
-									const uint8_t space = serial_space(Serial.available(), SERIAL_BUF_RX_SIZE);
-									MAVLink_report(&Serial, space, 0, smoothRSSI, rxerrors);
-									mavlink_last_inject_time = timeUs;
-								}
-								
 								Serial.write(ch);
 								mavlinkFrame.Parse(ch);
-								
 							}
 						}
 						else

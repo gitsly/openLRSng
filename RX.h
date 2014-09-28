@@ -3,7 +3,10 @@
  ****************************************************/
 
 uint32_t mavlink_last_inject_time = 0;
-MavlinkFrameDetector mavlinkFrame;
+MavlinkFrameDetector mavlinkIncomingFrame; // Track the incoming mavlink frames (from Tx)
+MavlinkFrameDetector mavlinkOutgoingFrame; // Track the outgoing mavlink frame (output from Mav sent to Tx)
+uint8_t lastOutgoingSequenceNumber = 0;
+uint16_t sequenceErrors = 0;
 
 bool debugToggle = false;
 uint16_t lastOverflowCounter = 0;
@@ -719,7 +722,8 @@ void setup()
   linkAcquired = 0;
   lastPacketTimeUs = micros();
 
-	mavlinkFrame.Reset();
+	mavlinkIncomingFrame.Reset();
+	mavlinkOutgoingFrame.Reset();
 }
 
 void slaveHop()
@@ -827,26 +831,35 @@ retry:
     updateLBeep(false);
 
 		if ((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_MAVLINK
-		&& mavlinkFrame.IsIdle()
+		&& mavlinkIncomingFrame.IsIdle()
 		&& timeUs - mavlink_last_inject_time > MAVLINK_INJECT_INTERVAL) {
+
+			const uint8_t space = serial_space(Serial.available(), SERIAL_BUF_RX_SIZE);
+
 			#ifdef DEBUG_MAVLINK // DEBUG: output serial buffer stats into the incoming MAVLINK stream (will not destroy any mavlink packet since it's between frames and will be discarded by the MAV.
+			Serial.println();
 			Serial.print(space);
-			Serial.print("%, ");
 				
-			Serial.print("o: ");
-			Serial.println(Serial.rxOverflowCounter());
+			Serial.print("%, o: ");
+			Serial.print(Serial.rxOverflowCounter());
+			
+			Serial.print(", ");
+			Serial.print("s: ");
+			Serial.print(sequenceErrors);
+			
+			Serial.print(", ");
+			Serial.print("rxerr: ");
+			Serial.println(rxerrors);
+
 			#endif
 				
-			const uint8_t space = serial_space(Serial.available(), SERIAL_BUF_RX_SIZE);
 			MAVLink_report(&Serial, space, 0, smoothRSSI, rxerrors);
-
 			mavlink_last_inject_time = timeUs;
-			
 
-			uint16_t overflow = Serial.rxOverflowCounter();
-			if (overflow - lastOverflowCounter > 0)
-				toggleRedLed();
-			lastOverflowCounter = overflow;
+			//uint16_t overflow = Serial.rxOverflowCounter();
+			//if (overflow - lastOverflowCounter > 0)
+				//toggleRedLed();
+			//lastOverflowCounter = overflow;
 		}
 			
 
@@ -902,7 +915,7 @@ retry:
 								i++;
 								const uint8_t ch = rx_buf[i];
 								Serial.write(ch);
-								mavlinkFrame.Parse(ch);
+								mavlinkIncomingFrame.Parse(ch);
 							}
 						}
 						else
@@ -936,7 +949,24 @@ retry:
 			uint8_t bytes = 0;
 			while ((bytes < bind_data.serial_downlink - 1) && Serial.available() > 0) {
 				bytes++;
-				tx_buf[bytes] = Serial.read();
+				const uint8_t ch = Serial.read();
+#ifdef DEBUG_MAVLINK
+				if (mavlinkOutgoingFrame.Parse(ch))
+				{
+					const uint16_t expected = ((uint16_t)lastOutgoingSequenceNumber + 1) % 256;
+					if (expected != mavlinkOutgoingFrame.m_packetSequence)
+					{
+						sequenceErrors++;
+						mavlinkOutgoingFrame.Reset();
+						toggleRedLed();
+					}
+					lastOutgoingSequenceNumber = mavlinkOutgoingFrame.m_packetSequence;
+					//Serial.println();
+					//Serial.print("sequence: ");
+					//Serial.println(mavlinkOutgoingFrame.m_packetSequence);
+				}
+#endif				
+				tx_buf[bytes] = ch;
 			}
 			tx_buf[0] |= (0x3F & bytes); // 0b00111111,
 		}
@@ -985,21 +1015,6 @@ retry:
       }
 #else
       tx_packet_async(tx_buf, bind_data.serial_downlink);
-/*
-      if (!((tx_buf[0] ^ rx_buf[0]) & 0x40)) { // If not true, resend last message
-        tx_buf[0] &= 0xc0; // set 2 msb high
-        tx_buf[0] ^= 0x40; // swap sequence bit7 as we have new data
-        uint8_t bytes = 0;
-        while ((bytes < bind_data.serial_downlink - 1) && Serial.available()) {
-          bytes++;
-          Serial.readBytes((char*)&tx_buf[bytes], 1);
-        }
-        tx_buf[0] |= (0x3F & bytes);
-      }
-#endif
-      tx_packet_async(tx_buf, bind_data.serial_downlink);
-
-*/
 
       while(!tx_done()) {
       }
@@ -1050,7 +1065,7 @@ retry:
       if (numberOfLostPackets == 0) {
         linkLossTimeMs = timeMs;
         lastBeaconTimeMs = 0;
-		rxerrors++;
+				rxerrors++;
       }
       numberOfLostPackets++;
       lastPacketTimeUs += getInterval(&bind_data);

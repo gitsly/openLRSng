@@ -77,8 +77,8 @@
 #define COM_BUF_MAXSIZE 32 // maximum downlink packet size. Max value is 64, No use having higher than SERIAL_BUFSIZE, (also 1 byte per rf packet is dedicated for datalength and flags)
 
 //####### MAVLink #######
-#define MAVLINK_INJECT_INTERVAL 100000
-//#define DEBUG_MAVLINK
+#define MAVLINK_INJECT_INTERVAL 1000000
+#define DEBUG_MAVLINK
 //####################
 //### CODE SECTION ###
 //####################

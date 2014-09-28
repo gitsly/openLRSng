@@ -59,6 +59,7 @@ public:
 		
 		bytes = bufPtr;
 		mask = (1 << shift) - 1;
+		overflow = 0;
 	}
 	
 };

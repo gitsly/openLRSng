@@ -1,72 +1,237 @@
+// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: t -*-
+//
+// Interrupt-driven serial transmit/receive library.
+//
+//      Copyright (c) 2010 Michael Smith. All rights reserved.
+//
+// Receive and baudrate calculations derived from the Arduino
+// HardwareSerial driver:
+//
+//      Copyright (c) 2006 Nicholas Zambetti.  All right reserved.
+//
+// Transmit algorithm inspired by work:
+//
+//      Code Jose Julio and Jordi Munoz. DIYDrones.com
+//
+//      This library is free software; you can redistribute it and/or
+//      modify it under the terms of the GNU Lesser General Public
+//      License as published by the Free Software Foundation; either
+//      version 2.1 of the License, or (at your option) any later
+//      version.
+//
+//      This library is distributed in the hope that it will be
+//      useful, but WITHOUT ANY WARRANTY; without even the implied
+//      warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+//      PURPOSE.  See the GNU Lesser General Public License for more
+//      details.
+//
+//      You should have received a copy of the GNU Lesser General
+//      Public License along with this library; if not, write to the
+//      Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
+//      Boston, MA 02110-1301 USA
+//
+
+//
+// Note that this library does not pre-declare drivers for serial
+// ports; the user must explicitly create drivers for the ports they
+// wish to use.  This is less friendly than the stock Arduino driver,
+// but it saves a few bytes of RAM for every unused port and frees up
+// the vector for another driver (e.g. MSPIM on USARTs).
+//
+
+// Use: __attribute__ ((noinline)) to optimize flash usage after moving all to header.
+
 // disable the stock Arduino serial driver
 #ifdef HardwareSerial_h
-# error Arduino serial driver is already defined.
+# error Must include FastSerial.h before the Arduino serial driver is defined.
 #endif
 #ifndef __AVR_ATmega32U4__
 #define HardwareSerial_h
 #endif
 
-#include <Stream.h>
-
-// on the 32u4 the first USART is USART1
-#ifndef __AVR_ATmega32U4__
-extern class SerialPort serialPort;
-//extern class SerialPort Serial1;
-//extern class SerialPort Serial2;
-//extern class SerialPort Serial3;
-#endif
+#include <inttypes.h>
+#include <stdlib.h>
+#include <avr/io.h>
+#include <avr/interrupt.h>
 
 
-#if   defined(UDR3)
-# define FS_MAX_PORTS   4
-#elif defined(UDR2)
-# define FS_MAX_PORTS   3
-#elif defined(UDR1)
-# define FS_MAX_PORTS   2
-#else
-# define FS_MAX_PORTS   1
-#endif
-
-
-#ifndef min
-#define min(a,b) (a < b ? a : b)
-#endif
-
-
-/// Transmit/receive buffer descriptor.
+/// @file	FastSerial.h
+/// @brief	An enhanced version of the Arduino HardwareSerial class
+///			implementing interrupt-driven transmission and flexible
+///			buffer management.
 ///
-/// Public so the interrupt handlers can see it
-class RingBuffer {
-public:
-	volatile uint16_t head, tail;	///< head and tail pointers
-	volatile uint16_t overflow;		///< Incremented every time the buffer can't fit a character.
-	uint16_t mask;					///< buffer size mask for pointer wrap
-	uint8_t *bytes;					///< pointer to allocated buffer
+/// Because Arduino libraries aren't really libraries, but we want to
+/// only define interrupt handlers for serial ports that are actually
+/// used, we have to force our users to define them using a macro.
+///
+/// FastSerialPort(<port name>, <port number>)
+///
+/// <port name> is the name of the object that will be created by the
+/// macro.  <port number> is the 0-based number of the port that will
+/// be managed by the object.
+///
+/// Previously ports were defined with a different macro for each port,
+/// and these macros are retained for compatibility:
+///
+/// FastSerialPort0(<port name>)         creates <port name> referencing serial port 0
+/// FastSerialPort1(<port name>)         creates <port name> referencing serial port 1
+/// FastSerialPort2(<port name>)         creates <port name> referencing serial port 2
+/// FastSerialPort3(<port name>)         creates <port name> referencing serial port 3
+///
+/// Note that compatibility macros are only defined for ports that
+/// exist on the target device.
+///
 
-	__attribute__ ((noinline)) void setBuffer(uint8_t* bufPtr, uint16_t size)
-	{
-		const uint8_t max_buffer_size = 0xffff;
-		uint16_t		shift;
+///	@name	Compatibility
+///
+/// Forward declarations for clients that want to assume that the
+/// default Serial* objects exist.
+///
+/// Note that the application is responsible for ensuring that these
+/// actually get defined, otherwise Arduino will suck in the
+/// HardwareSerial library and linking will fail.
+//@{
+#ifndef __AVR_ATmega32U4__
+extern class FastSerial Serial;
+extern class FastSerial Serial1;
+extern class FastSerial Serial2;
+extern class FastSerial Serial3;
+#endif
+//@}
 
-		// init buffer state
-		// head = tail = 0; // Also done in begin().
+/// The FastSerial class definition
+///
+class FastSerial: public Stream {
+	public:
 
-		// Compute the power of 2 greater or equal to the requested buffer size
-		// and then a mask to simplify wrapping operations.  Using __builtin_clz
-		// would seem to make sense, but it uses a 256(!) byte table.
-		// Note that we ignore requests for more than BUFFER_MAX space.
-		for (shift = 1; (1U << shift) < min(max_buffer_size, size); shift++);
-		
-		bytes = bufPtr;
-		mask = (1 << shift) - 1;
-		overflow = 0;
+	/// Constructor
+	FastSerial(const uint8_t portNumber, volatile uint8_t *ubrrh, volatile uint8_t *ubrrl, volatile uint8_t *ucsra,
+	volatile uint8_t *ucsrb, const uint8_t u2x, const uint8_t portEnableBits, const uint8_t portTxBits);
+
+	/// @name 	Serial API
+	//@{
+	virtual void begin(long baud);
+	virtual void end(void);
+	virtual int available(void);
+	virtual int txspace(void);
+	virtual int read(void);
+	virtual int peek(void);
+	virtual void flush(void);
+
+	uint16_t rxOverflowCounter(void);
+
+	#if defined(ARDUINO) && ARDUINO >= 100
+	virtual size_t write(uint8_t c);
+	#else
+	virtual void write(uint8_t c);
+	#endif
+	using BetterStream::write;
+	//@}
+
+	/// Extended port open method
+	///
+	/// Allows for both opening with specified buffer sizes, and re-opening
+	/// to adjust a subset of the port's settings.
+	///
+	/// @note	Buffer sizes greater than ::_max_buffer_size will be rounded
+	///			down.
+	///
+	/// @param	baud		Selects the speed that the port will be
+	///						configured to.  If zero, the port speed is left
+	///						unchanged.
+	/// @param rxSpace		Sets the receive buffer size for the port.  If zero
+	///						then the buffer size is left unchanged if the port
+	///						is open, or set to ::_default_rx_buffer_size if it is
+	///						currently closed.
+	/// @param txSpace		Sets the transmit buffer size for the port.  If zero
+	///						then the buffer size is left unchanged if the port
+	///						is open, or set to ::_default_tx_buffer_size if it
+	///						is currently closed.
+	///
+	virtual void begin(long baud, unsigned int rxSpace, unsigned int txSpace);
+
+	/// Transmit/receive buffer descriptor.
+	///
+	/// Public so the interrupt handlers can see it
+	struct Buffer {
+		volatile uint16_t head, tail;	///< head and tail pointers
+		volatile uint16_t overflow;		///< Incremented every time the buffer can't fit a character.
+		uint16_t mask;					///< buffer size mask for pointer wrap
+		uint8_t *bytes;					///< pointer to allocated buffer
+	};
+
+	/// Tell if the serial port has been initialized
+	static bool getInitialized(uint8_t port) {
+		return (1<<port) & _serialInitialized;
 	}
-	
+
+	// ask for writes to be blocking or non-blocking
+	void set_blocking_writes(bool blocking) {
+		_nonblocking_writes = !blocking;
+	}
+
+	private:
+
+	/// Bit mask for initialized ports
+	static uint8_t _serialInitialized;
+
+	/// Set if the serial port has been initialized
+	static void setInitialized(uint8_t port) {
+		_serialInitialized |= (1<<port);
+	}
+
+	// register accessors
+	volatile uint8_t * const _ubrrh;
+	volatile uint8_t * const _ubrrl;
+	volatile uint8_t * const _ucsra;
+	volatile uint8_t * const _ucsrb;
+
+	// register magic numbers
+	const uint8_t	_u2x;
+	const uint8_t	_portEnableBits;		///< rx, tx and rx interrupt enables
+	const uint8_t	_portTxBits;			///< tx data and completion interrupt enables
+
+
+	// ring buffers
+	Buffer			* const _rxBuffer;
+	Buffer			* const _txBuffer;
+	bool 			_open;
+
+	// whether writes to the port should block waiting
+	// for enough space to appear
+	bool			_nonblocking_writes;
+
+	/// Allocates a buffer of the given size
+	///
+	/// @param	buffer		The buffer descriptor for which the buffer will
+	///						will be allocated.
+	/// @param	size		The desired buffer size.
+	/// @returns			True if the buffer was allocated successfully.
+	///
+	static bool _allocBuffer(Buffer *buffer, unsigned int size);
+
+	/// Frees the allocated buffer in a descriptor
+	///
+	/// @param	buffer		The descriptor whose buffer should be freed.
+	///
+	static void _freeBuffer(Buffer *buffer);
+
+	/// default receive buffer size
+	static const unsigned int	_default_rx_buffer_size = 128;
+
+	/// default transmit buffer size
+	static const unsigned int	_default_tx_buffer_size = 16;
+
+	/// maxium tx/rx buffer size
+	/// @note if we could bring the max size down to 256, the mask and head/tail
+	///       pointers in the buffer could become uint8_t.
+	///
+	static const unsigned int	_max_buffer_size = 512;
 };
 
 // Used by the per-port interrupt vectors
-RingBuffer __FastSerial__rxBuffer[FS_MAX_PORTS];
-RingBuffer __FastSerial__txBuffer[FS_MAX_PORTS];
+extern FastSerial::Buffer __FastSerial__rxBuffer[];
+extern FastSerial::Buffer __FastSerial__txBuffer[];
 
 /// Generic Rx/Tx vectors for a serial port - needs to know magic numbers
 ///
@@ -75,6 +240,7 @@ ISR(_RXVECTOR, ISR_BLOCK)                                               \
 {                                                                       \
 	uint8_t c;                                                      \
 	uint16_t i;                                                      \
+	\
 	/* read the byte as quickly as possible */                      \
 	c = _UDR;                                                       \
 	/* work out where the head will go next */                      \
@@ -104,6 +270,7 @@ ISR(_TXVECTOR, ISR_BLOCK)                                               \
 		_UCSRB &= ~_TXBITS;                             \
 	}                                                               \
 }                                                                       \
+struct hack
 
 //
 // Portability; convert various older sets of defines for U(S)ART0 up
@@ -142,204 +309,38 @@ ISR(_TXVECTOR, ISR_BLOCK)                                               \
 #endif
 
 ///
-/// Macro initializing a SerialPort port instance.
+/// Macro defining a FastSerial port instance.
 ///
-#define DefineSerialPort(_name, _num)          \
-SerialPort _name(_num,						 \
+#define FastSerialPort(_name, _num)                                     \
+FastSerial _name(_num,                                          \
 &UBRR##_num##H,                                \
 &UBRR##_num##L,                                \
 &UCSR##_num##A,                                \
 &UCSR##_num##B,                                \
 U2X##_num,                                     \
-(_BV(RXEN##_num) | _BV(TXEN##_num) | _BV(RXCIE##_num)), \
+(_BV(RXEN##_num) |  _BV(TXEN##_num) | _BV(RXCIE##_num)), \
 (_BV(UDRIE##_num)));                           \
-FastSerialHandler(_num,                         \
+FastSerialHandler(_num,                                         \
 USART##_num##_RX_vect,                        \
 USART##_num##_UDRE_vect,                      \
 UDR##_num,                                    \
 UCSR##_num##B,                                \
 _BV(UDRIE##_num))
 
-class SerialPort : public Stream
-{
-public:
-	__attribute__ ((noinline)) SerialPort(const uint8_t portNumber, volatile uint8_t *ubrrh, volatile uint8_t *ubrrl, volatile uint8_t *ucsra, volatile uint8_t *ucsrb, const uint8_t u2x, const uint8_t portEnableBits, const uint8_t portTxBits)
-	{
-		_open = false;
-		_ubrrh = ubrrh;
-		_ubrrl = ubrrl;
-		_ucsra = ucsra;
-		_ucsrb = ucsrb;
-		_u2x = u2x;
-		_portEnableBits = portEnableBits;
-		_portTxBits = portTxBits;
-		_rxBuffer = &__FastSerial__rxBuffer[portNumber];
-		_txBuffer = &__FastSerial__txBuffer[portNumber];
-		_serialInitialized |= (1 << portNumber);
-	}
-
-	__attribute__ ((noinline)) void setBuffers(uint8_t* rxPtr, uint16_t rxSize, uint8_t* txPtr, uint16_t txSize)
-	{
-		_rxBuffer->setBuffer(rxPtr, rxSize);
-		_txBuffer->setBuffer(txPtr, txSize);
-	}
-
-	__attribute__ ((noinline)) void begin(long baud)
-	{
-		uint16_t ubrr;
-		bool use_u2x = true;
-
-		// if we are currently open...
-		if (_open) {
-			// close the port in its current configuration, clears _open
-			end();
-		}
-
-		// reset buffer pointers
-		_txBuffer->head = _txBuffer->tail = 0;
-		_rxBuffer->head = _rxBuffer->tail = 0;
-
-		// mark the port as open
-		_open = true;
-
-		// If the user has supplied a new baud rate, compute the new UBRR value.
-		if (baud > 0) {
-			#if F_CPU == 16000000UL
-			// hardcoded exception for compatibility with the bootloader shipped
-			// with the Duemilanove and previous boards and the firmware on the 8U2
-			// on the Uno and Mega 2560.
-			if (baud == 57600)
-			{
-				use_u2x = false;
-			}
-			#endif
-
-			if (use_u2x) {
-				*_ucsra = 1 << _u2x;
-				ubrr = (F_CPU / 4 / baud - 1) / 2;
-				} else {
-				*_ucsra = 0;
-				ubrr = (F_CPU / 8 / baud - 1) / 2;
-			}
-
-			*_ubrrh = ubrr >> 8;
-			*_ubrrl = ubrr;
-		}
-
-		*_ucsrb |= _portEnableBits;
-	}
-
-	__attribute__ ((noinline)) void end()
-	{
-		*_ucsrb &= ~(_portEnableBits | _portTxBits);
-		_open = false;
-	}
-
-	__attribute__ ((noinline)) virtual size_t write(uint8_t c)
-	{
-		uint16_t i;
-
-		if (!_open) // drop bytes if not open
-			return -1;
-
-		// wait for room in the tx buffer
-		i = (_txBuffer->head + 1) & _txBuffer->mask;
-		while (i == _txBuffer->tail);
-
-		// add byte to the buffer
-		_txBuffer->bytes[_txBuffer->head] = c;
-		_txBuffer->head = i;
-
-		// enable the data-ready interrupt, as it may be off if the buffer is empty
-		*_ucsrb |= _portTxBits;
-		return 1;
-	}
-	
-	__attribute__ ((noinline)) uint16_t rxOverflowCounter()
-	{
-		if (!_open)
-			return 0;
-		return _rxBuffer->overflow;
-	}
-
-	__attribute__ ((noinline)) int available()
-	{
-		if (!_open)
-			return (-1);
-		return ((_rxBuffer->head - _rxBuffer->tail) & _rxBuffer->mask);
-	}
-
-	__attribute__ ((noinline)) uint16_t txspace()
-	{
-		return ((_txBuffer->mask+1) - ((_txBuffer->head - _txBuffer->tail) & _txBuffer->mask));
-	}
-
-	__attribute__ ((noinline)) int read()
-	{
-		uint8_t c;
-		// if the head and tail are equal, the buffer is empty
-		if (!_open || (_rxBuffer->head == _rxBuffer->tail))
-			return (-1);
-
-		// pull character from tail
-		c = _rxBuffer->bytes[_rxBuffer->tail];
-		_rxBuffer->tail = (_rxBuffer->tail + 1) & _rxBuffer->mask;
-		return c;
-	}
+///
+/// Compatibility macros for previous FastSerial versions.
+///
+/// Note that these are not conditionally defined, as the errors
+/// generated when using these macros for a board that does not support
+/// the port are better than the errors generated for a macro that's not
+/// defined at all.
+///
+#define FastSerialPort0(_portName)     FastSerialPort(_portName, 0)
+#define FastSerialPort1(_portName)     FastSerialPort(_portName, 1)
+#define FastSerialPort2(_portName)     FastSerialPort(_portName, 2)
+#define FastSerialPort3(_portName)     FastSerialPort(_portName, 3)
 
 
-	__attribute__ ((noinline)) int peek()
-	{
-		// if the head and tail are equal, the buffer is empty
-		if (!_open || (_rxBuffer->head == _rxBuffer->tail))
-			return (-1);
-		// pull character from tail
-		return (_rxBuffer->bytes[_rxBuffer->tail]);
-	}
 
-	__attribute__ ((noinline)) void flush()
-	{
-		// don't reverse this or there may be problems if the RX interrupt
-		// occurs after reading the value of _rxBuffer->head but before writing
-		// the value to _rxBuffer->tail; the previous value of head
-		// may be written to tail, making it appear as if the buffer
-		// don't reverse this or there may be problems if the RX interrupt
-		// occurs after reading the value of head but before writing
-		// the value to tail; the previous value of rx_buffer_head
-		// may be written to tail, making it appear as if the buffer
-		// were full, not empty.
-		_rxBuffer->head = _rxBuffer->tail;
 
-		// don't reverse this or there may be problems if the TX interrupt
-		// occurs after reading the value of _txBuffer->tail but before writing
-		// the value to _txBuffer->head.
-		_txBuffer->tail = _txBuffer->head;
-	}
-	
-private:
-	// register accessors
-	volatile uint8_t* _ubrrh;
-	volatile uint8_t* _ubrrl;
-	volatile uint8_t* _ucsra;
-	volatile uint8_t* _ucsrb;
 
-	// register magic numbers
-	uint8_t	_u2x;
-	uint8_t	_portEnableBits;	///const < rx, tx and rx interrupt enables
-	uint8_t	_portTxBits;			///const < tx data and completion interrupt enables
-
-	// ring buffers
-	RingBuffer* _rxBuffer;
-	RingBuffer* _txBuffer;
-	bool 			_open;
-
-	// whether writes to the port should block waiting
-	// for enough space to appear
-	bool			_nonblocking_writes;
-
-	/// Bit mask for initialized ports
-	static uint8_t _serialInitialized;
-};
-
-/// Bit mask for initialized ports
-uint8_t SerialPort::_serialInitialized = 0;

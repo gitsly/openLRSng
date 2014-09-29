@@ -76,14 +76,8 @@ inline uint8_t	serial_space(uint8_t available, uint8_t max)
 }
 
 
-#ifdef COMPILE_TX
-#define MavlinkSerialPort TelemetrySerial
-#else
-#define MavlinkSerialPort Serial
-#endif
-
 /// send a MAVLink status report packet
-void MAVLink_report(SerialPort* serial, uint8_t space, uint8_t RSSI_remote, uint16_t RSSI_local, uint16_t rxerrors)
+void MAVLink_report(uint8_t space, uint8_t RSSI_remote, uint16_t RSSI_local, uint16_t rxerrors)
 {
 	g_mavlinkBuffer[0] = 254;
 	g_mavlinkBuffer[1] = sizeof(struct mavlink_RADIO_v10);
@@ -112,11 +106,11 @@ void MAVLink_report(SerialPort* serial, uint8_t space, uint8_t RSSI_remote, uint
 
 	uint8_t size = sizeof(g_mavlinkBuffer);
 	uint8_t *buffer = (uint8_t*)g_mavlinkBuffer;
-	if (serial->txspace() >= size) 		// don't cause an overflow
+	if (Serial.txspace() >= size) 		// don't cause an overflow
 	{
 			//MavlinkSerialPort.write(g_mavlinkBuffer, sizeof(g_mavlinkBuffer)); // TODO: Fix error: no matching function for call to 'SerialPort::write (it should be in Print class which SerialPort is derived from through Stream
 		  while (size--) {
-			  serial->write(*buffer++);
+			  Serial.write(*buffer++);
 		  }
 	}
 

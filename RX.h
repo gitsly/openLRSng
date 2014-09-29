@@ -607,8 +607,7 @@ void setup()
   pinMode(0, INPUT);   // Serial Rx
   pinMode(1, OUTPUT);  // Serial Tx
 	
-	Serial.setBuffers(serial_rxbuffer, SERIAL_BUF_RX_SIZE, serial_txbuffer, SERIAL_BUF_TX_SIZE);
-  Serial.begin(115200);
+  Serial.begin(115200, SERIAL_BUF_RX_SIZE, SERIAL_BUF_TX_SIZE);
   rxReadEeprom();
   failsafeLoad();
   Serial.print("OpenLRSng RX starting ");
@@ -853,7 +852,7 @@ retry:
 
 			#endif
 				
-			MAVLink_report(&Serial, space, 0, smoothRSSI, rxerrors);
+			MAVLink_report(space, 0, smoothRSSI, rxerrors);
 			mavlink_last_inject_time = timeUs;
 
 			//uint16_t overflow = Serial.rxOverflowCounter();

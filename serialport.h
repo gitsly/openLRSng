@@ -53,6 +53,7 @@
 #include <stdlib.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <Stream.h>
 
 
 /// @file	FastSerial.h
@@ -101,6 +102,36 @@ extern class FastSerial Serial3;
 
 /// The FastSerial class definition
 ///
+
+/// Transmit/receive buffer descriptor.
+///
+/// Public so the interrupt handlers can see it
+struct RingBuffer {
+	volatile uint16_t head, tail;	///< head and tail pointers
+	volatile uint16_t overflow;		///< Incremented every time the buffer can't fit a character.
+	uint16_t mask;					///< buffer size mask for pointer wrap
+	uint8_t *bytes;					///< pointer to allocated buffer
+};
+
+#if   defined(UDR3)
+# define FS_MAX_PORTS   4
+#elif defined(UDR2)
+# define FS_MAX_PORTS   3
+#elif defined(UDR1)
+# define FS_MAX_PORTS   2
+#else
+# define FS_MAX_PORTS   1
+#endif
+
+#ifndef min
+#define min(a, b) (a < b ? a : b)
+#endif
+
+
+RingBuffer __FastSerial__rxBuffer[FS_MAX_PORTS];
+RingBuffer __FastSerial__txBuffer[FS_MAX_PORTS];
+uint8_t FastSerial_serialInitialized = 0; 	/// Bit mask for initialized ports
+
 class FastSerial: public Stream {
 	public:
 
@@ -204,8 +235,6 @@ class FastSerial: public Stream {
 		return _rxBuffer->overflow;
 	}
 
-
-	#if defined(ARDUINO) && ARDUINO >= 100
 	virtual size_t write(uint8_t c)
 	{
 		uint16_t i;
@@ -244,7 +273,7 @@ class FastSerial: public Stream {
 	/// Allows for both opening with specified buffer sizes, and re-opening
 	/// to adjust a subset of the port's settings.
 	///
-	/// @note	Buffer sizes greater than ::_max_buffer_size will be rounded
+	/// @note	RingBuffer sizes greater than ::_max_buffer_size will be rounded
 	///			down.
 	///
 	/// @param	baud		Selects the speed that the port will be
@@ -316,19 +345,10 @@ class FastSerial: public Stream {
 	}
 
 
-	/// Transmit/receive buffer descriptor.
-	///
-	/// Public so the interrupt handlers can see it
-	struct Buffer {
-		volatile uint16_t head, tail;	///< head and tail pointers
-		volatile uint16_t overflow;		///< Incremented every time the buffer can't fit a character.
-		uint16_t mask;					///< buffer size mask for pointer wrap
-		uint8_t *bytes;					///< pointer to allocated buffer
-	};
 
 	/// Tell if the serial port has been initialized
 	static bool getInitialized(uint8_t port) {
-		return (1<<port) & _serialInitialized;
+		return (1<<port) & FastSerial_serialInitialized;
 	}
 
 	// ask for writes to be blocking or non-blocking
@@ -338,12 +358,9 @@ class FastSerial: public Stream {
 
 	private:
 
-	/// Bit mask for initialized ports
-	static uint8_t _serialInitialized;
-
 	/// Set if the serial port has been initialized
 	static void setInitialized(uint8_t port) {
-		_serialInitialized |= (1<<port);
+		FastSerial_serialInitialized |= (1<<port);
 	}
 
 	// register accessors
@@ -359,8 +376,8 @@ class FastSerial: public Stream {
 
 
 	// ring buffers
-	Buffer			* const _rxBuffer;
-	Buffer			* const _txBuffer;
+	RingBuffer			* const _rxBuffer;
+	RingBuffer			* const _txBuffer;
 	bool 			_open;
 
 	// whether writes to the port should block waiting
@@ -374,13 +391,56 @@ class FastSerial: public Stream {
 	/// @param	size		The desired buffer size.
 	/// @returns			True if the buffer was allocated successfully.
 	///
-	static bool _allocBuffer(Buffer *buffer, unsigned int size);
+	static bool _allocBuffer(RingBuffer *buffer, unsigned int size)
+	{
+		uint16_t	mask;
+		uint8_t		shift;
+
+		// init buffer state
+		buffer->head = buffer->tail = 0;
+
+		// Compute the power of 2 greater or equal to the requested buffer size
+		// and then a mask to simplify wrapping operations.  Using __builtin_clz
+		// would seem to make sense, but it uses a 256(!) byte table.
+		// Note that we ignore requests for more than BUFFER_MAX space.
+		for (shift = 1; (1U << shift) < min(_max_buffer_size, size); shift++)
+		;
+		mask = (1 << shift) - 1;
+
+		// If the descriptor already has a buffer allocated we need to take
+		// care of it.
+		if (buffer->bytes) {
+
+			// If the allocated buffer is already the correct size then
+			// we have nothing to do
+			if (buffer->mask == mask)
+			return true;
+
+			// Dispose of the old buffer.
+			free(buffer->bytes);
+		}
+		buffer->mask = mask;
+
+		// allocate memory for the buffer - if this fails, we fail.
+		buffer->bytes = (uint8_t *) malloc(buffer->mask + 1);
+
+		return (buffer->bytes != NULL);
+	}
+
 
 	/// Frees the allocated buffer in a descriptor
 	///
 	/// @param	buffer		The descriptor whose buffer should be freed.
 	///
-	static void _freeBuffer(Buffer *buffer);
+	static void _freeBuffer(RingBuffer *buffer)
+	{
+		buffer->head = buffer->tail = 0;
+		buffer->mask = 0;
+		if (NULL != buffer->bytes) {
+			free(buffer->bytes);
+			buffer->bytes = NULL;
+		}
+	}
 
 	/// default receive buffer size
 	static const unsigned int	_default_rx_buffer_size = 128;
@@ -395,9 +455,6 @@ class FastSerial: public Stream {
 	static const unsigned int	_max_buffer_size = 512;
 };
 
-// Used by the per-port interrupt vectors
-extern FastSerial::Buffer __FastSerial__rxBuffer[];
-extern FastSerial::Buffer __FastSerial__txBuffer[];
 
 /// Generic Rx/Tx vectors for a serial port - needs to know magic numbers
 ///
@@ -505,23 +562,3 @@ _BV(UDRIE##_num))
 #define FastSerialPort1(_portName)     FastSerialPort(_portName, 1)
 #define FastSerialPort2(_portName)     FastSerialPort(_portName, 2)
 #define FastSerialPort3(_portName)     FastSerialPort(_portName, 3)
-
-
-///////// CPP //////////
-
-#if   defined(UDR3)
-# define FS_MAX_PORTS   4
-#elif defined(UDR2)
-# define FS_MAX_PORTS   3
-#elif defined(UDR1)
-# define FS_MAX_PORTS   2
-#else
-# define FS_MAX_PORTS   1
-#endif
-
-FastSerial::Buffer __FastSerial__rxBuffer[FS_MAX_PORTS];
-FastSerial::Buffer __FastSerial__txBuffer[FS_MAX_PORTS];
-uint8_t FastSerial::_serialInitialized = 0;
-
-
-

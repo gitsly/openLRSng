@@ -83,7 +83,7 @@
 //### CODE SECTION ###
 //####################
 
-#include <FastSerial.h>
+#include "serialport.h"
 #define DefineSerialPort(_name, _num) FastSerialPort(_name, _num)
 
 #include <Arduino.h>

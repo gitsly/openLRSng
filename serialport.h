@@ -39,9 +39,7 @@
 // the vector for another driver (e.g. MSPIM on USARTs).
 //
 
-// Use: __attribute__ ((noinline)) to optimize flash usage after moving all to header.
-
-// disable the stock Arduino serial driver
+// Disable the stock Arduino serial driver
 #ifdef HardwareSerial_h
 # error Must include FastSerial.h before the Arduino serial driver is defined.
 #endif
@@ -83,26 +81,6 @@
 /// exist on the target device.
 ///
 
-///	@name	Compatibility
-///
-/// Forward declarations for clients that want to assume that the
-/// default Serial* objects exist.
-///
-/// Note that the application is responsible for ensuring that these
-/// actually get defined, otherwise Arduino will suck in the
-/// HardwareSerial library and linking will fail.
-//@{
-#ifndef __AVR_ATmega32U4__
-extern class FastSerial Serial;
-extern class FastSerial Serial1;
-extern class FastSerial Serial2;
-extern class FastSerial Serial3;
-#endif
-//@}
-
-/// The FastSerial class definition
-///
-
 /// Transmit/receive buffer descriptor.
 ///
 /// Public so the interrupt handlers can see it
@@ -136,7 +114,7 @@ class FastSerial: public Stream {
 	public:
 
 	/// Constructor
-	FastSerial(const uint8_t portNumber, volatile uint8_t *ubrrh, volatile uint8_t *ubrrl, volatile uint8_t *ucsra,
+	__attribute__ ((noinline)) FastSerial(const uint8_t portNumber, volatile uint8_t *ubrrh, volatile uint8_t *ubrrl, volatile uint8_t *ucsra,
 	volatile uint8_t *ucsrb, const uint8_t u2x, const uint8_t portEnableBits, const uint8_t portTxBits)  :
 	_ubrrh(ubrrh),
 	_ubrrl(ubrrl),
@@ -148,18 +126,17 @@ class FastSerial: public Stream {
 	_rxBuffer(&__FastSerial__rxBuffer[portNumber]),
 	_txBuffer(&__FastSerial__txBuffer[portNumber])
 	{
-		setInitialized(portNumber);
-		begin(57600);
+		FastSerial_serialInitialized |= (1 << portNumber);
 	}
 
 	/// @name 	Serial API
 	//@{
-	virtual void begin(long baud)
+	__attribute__ ((noinline)) virtual void begin(long baud)
 	{
 		begin(baud, 0, 0);
 	}
 
-	virtual void end(void)
+	__attribute__ ((noinline)) virtual void end(void)
 	{
 		*_ucsrb &= ~(_portEnableBits | _portTxBits);
 
@@ -168,21 +145,21 @@ class FastSerial: public Stream {
 		_open = false;
 	}
 
-	virtual int available(void)
+	__attribute__ ((noinline)) virtual int available(void)
 	{
 		if (!_open)
 		return (-1);
 		return ((_rxBuffer->head - _rxBuffer->tail) & _rxBuffer->mask);
 	}
 
-	virtual int txspace(void)
+	__attribute__ ((noinline)) virtual int txspace(void)
 	{
 		if (!_open)
 		return (-1);
 		return ((_txBuffer->mask+1) - ((_txBuffer->head - _txBuffer->tail) & _txBuffer->mask));
 	}
 	
-	virtual int read(void)
+	__attribute__ ((noinline)) virtual int read(void)
 	{
 		uint8_t c;
 
@@ -197,7 +174,7 @@ class FastSerial: public Stream {
 		return (c);
 	}
 
-	virtual int peek(void)
+	__attribute__ ((noinline)) virtual int peek(void)
 	{
 
 		// if the head and tail are equal, the buffer is empty
@@ -208,7 +185,7 @@ class FastSerial: public Stream {
 		return (_rxBuffer->bytes[_rxBuffer->tail]);
 	}
 
-	virtual void flush(void)
+	__attribute__ ((noinline)) virtual void flush(void)
 	{
 		// don't reverse this or there may be problems if the RX interrupt
 		// occurs after reading the value of _rxBuffer->head but before writing
@@ -228,14 +205,14 @@ class FastSerial: public Stream {
 	}
 
 
-	uint16_t rxOverflowCounter(void)
+	__attribute__ ((noinline)) uint16_t rxOverflowCounter(void)
 	{
 		if (!_open)
 		return 0;
 		return _rxBuffer->overflow;
 	}
 
-	virtual size_t write(uint8_t c)
+	__attribute__ ((noinline)) virtual size_t write(uint8_t c)
 	{
 		uint16_t i;
 
@@ -251,8 +228,7 @@ class FastSerial: public Stream {
 			return 0;
 		}
 
-		while (i == _txBuffer->tail)
-		;
+		while (i == _txBuffer->tail);
 
 		// add byte to the buffer
 		_txBuffer->bytes[_txBuffer->head] = c;
@@ -288,7 +264,7 @@ class FastSerial: public Stream {
 	///						is open, or set to ::_default_tx_buffer_size if it
 	///						is currently closed.
 	///
-	virtual void begin(long baud, unsigned int rxSpace, unsigned int txSpace)
+	__attribute__ ((noinline)) virtual void begin(long baud, unsigned int rxSpace, unsigned int txSpace)
 	{
 		uint16_t ubrr;
 		bool use_u2x = true;
@@ -344,24 +320,12 @@ class FastSerial: public Stream {
 		*_ucsrb |= _portEnableBits;
 	}
 
-
-
-	/// Tell if the serial port has been initialized
-	static bool getInitialized(uint8_t port) {
-		return (1<<port) & FastSerial_serialInitialized;
-	}
-
 	// ask for writes to be blocking or non-blocking
 	void set_blocking_writes(bool blocking) {
 		_nonblocking_writes = !blocking;
 	}
 
 	private:
-
-	/// Set if the serial port has been initialized
-	static void setInitialized(uint8_t port) {
-		FastSerial_serialInitialized |= (1<<port);
-	}
 
 	// register accessors
 	volatile uint8_t * const _ubrrh;
@@ -391,7 +355,7 @@ class FastSerial: public Stream {
 	/// @param	size		The desired buffer size.
 	/// @returns			True if the buffer was allocated successfully.
 	///
-	static bool _allocBuffer(RingBuffer *buffer, unsigned int size)
+	__attribute__ ((noinline)) static bool _allocBuffer(RingBuffer *buffer, unsigned int size)
 	{
 		uint16_t	mask;
 		uint8_t		shift;
@@ -432,7 +396,7 @@ class FastSerial: public Stream {
 	///
 	/// @param	buffer		The descriptor whose buffer should be freed.
 	///
-	static void _freeBuffer(RingBuffer *buffer)
+	__attribute__ ((noinline)) static void _freeBuffer(RingBuffer *buffer)
 	{
 		buffer->head = buffer->tail = 0;
 		buffer->mask = 0;

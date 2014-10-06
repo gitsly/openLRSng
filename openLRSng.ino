@@ -45,7 +45,7 @@
 //####### COMPILATION TARGET #######
 // Enable to compile transmitter code, default is RX (remove leading //)
 //#define COMPILE_TX 0 // compile RX code
-#define COMPILE_TX 1 // compile TX code
+#define COMPILE_TX 0 // compile TX code
 
 //####### TX BOARD TYPE #######
 // Enable one of the lines below (remove leading //)
@@ -78,7 +78,7 @@
 
 //####### MAVLink #######
 #define MAVLINK_INJECT_INTERVAL 1000000
-#define DEBUG_MAVLINK
+
 //####################
 //### CODE SECTION ###
 //####################

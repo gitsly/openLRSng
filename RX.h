@@ -4,12 +4,6 @@
 
 uint32_t mavlink_last_inject_time = 0;
 MavlinkFrameDetector mavlinkIncomingFrame; // Track the incoming mavlink frames (from Tx)
-MavlinkFrameDetector mavlinkOutgoingFrame; // Track the outgoing mavlink frame (output from Mav sent to Tx)
-uint8_t lastOutgoingSequenceNumber = 0;
-uint16_t sequenceErrors = 0;
-
-bool debugToggle = false;
-uint16_t lastOverflowCounter = 0;
 
 uint16_t rxerrors = 0;
 
@@ -723,7 +717,6 @@ void setup()
   lastPacketTimeUs = micros();
 
 	mavlinkIncomingFrame.Reset();
-	mavlinkOutgoingFrame.Reset();
 }
 
 void slaveHop()
@@ -762,19 +755,6 @@ uint16_t rxSlave  = 0;
 uint16_t rxMaster = 0;
 uint32_t rxStatsMs = 0;
 #endif
-
-void toggleRedLed()
-{
-	if (debugToggle == true)
-	{
-		Red_LED_ON;
-	}
-	else
-	{
-		Red_LED_OFF;
-	}
-	debugToggle = !debugToggle;
-}
 
 //############ MAIN LOOP ##############
 void loop()
@@ -835,31 +815,8 @@ retry:
 		&& timeUs - mavlink_last_inject_time > MAVLINK_INJECT_INTERVAL) {
 
 			const uint8_t space = serial_space(Serial.available(), SERIAL_BUF_RX_SIZE);
-
-			#ifdef DEBUG_MAVLINK // DEBUG: output serial buffer stats into the incoming MAVLINK stream (will not destroy any mavlink packet since it's between frames and will be discarded by the MAV.
-			Serial.println();
-			Serial.print(space);
-				
-			Serial.print("%, o: ");
-			Serial.print(Serial.rxOverflowCounter());
-			
-			Serial.print(", ");
-			Serial.print("s: ");
-			Serial.print(sequenceErrors);
-			
-			Serial.print(", ");
-			Serial.print("rxerr: ");
-			Serial.println(rxerrors);
-
-			#endif
-				
 			MAVLink_report(space, 0, smoothRSSI, rxerrors);
 			mavlink_last_inject_time = timeUs;
-
-			//uint16_t overflow = Serial.rxOverflowCounter();
-			//if (overflow - lastOverflowCounter > 0)
-				//toggleRedLed();
-			//lastOverflowCounter = overflow;
 		}
 			
 
@@ -939,10 +896,10 @@ retry:
     disablePPM = 0;
 
     if (bind_data.flags & TELEMETRY_MASK) {
-      if ((tx_buf[0] ^ rx_buf[0]) & 0x40) { // 0x40 = 0b01000000
+      if ((tx_buf[0] ^ rx_buf[0]) & 0x40) {
         // resend last message
       } else {
-        tx_buf[0] &= 0xc0; // 0b11000000
+        tx_buf[0] &= 0xc0;
         tx_buf[0] ^= 0x40; // swap sequence as we have new data
 
 		if((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_MAVLINK) {
@@ -950,25 +907,9 @@ retry:
 			while ((bytes < bind_data.serial_downlink - 1) && Serial.available() > 0) {
 				bytes++;
 				const uint8_t ch = Serial.read();
-#ifdef DEBUG_MAVLINK
-				if (mavlinkOutgoingFrame.Parse(ch))
-				{
-					const uint16_t expected = ((uint16_t)lastOutgoingSequenceNumber + 1) % 256;
-					if (expected != mavlinkOutgoingFrame.m_packetSequence)
-					{
-						sequenceErrors++;
-						mavlinkOutgoingFrame.Reset();
-						toggleRedLed();
-					}
-					lastOutgoingSequenceNumber = mavlinkOutgoingFrame.m_packetSequence;
-					//Serial.println();
-					//Serial.print("sequence: ");
-					//Serial.println(mavlinkOutgoingFrame.m_packetSequence);
-				}
-#endif				
 				tx_buf[bytes] = ch;
 			}
-			tx_buf[0] |= (0x3F & bytes); // 0b00111111,
+			tx_buf[0] |= (0x3F & bytes);
 		}
 		else {
 			if (Serial.available() > 0) {
@@ -977,7 +918,7 @@ retry:
 					bytes++;
 					tx_buf[bytes] = Serial.read();
 			  }
-			  tx_buf[0] |= (0x37 & bytes); // 0b00110111, 
+			  tx_buf[0] |= (0x37 & bytes); 
 			} else {
 			  // tx_buf[0] lowest 6 bits left at 0
 			  tx_buf[1] = lastRSSIvalue;

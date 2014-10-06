@@ -132,9 +132,6 @@ class FastSerial: public Stream {
 	__attribute__ ((noinline)) virtual void end(void)
 	{
 		*_ucsrb &= ~(_portEnableBits | _portTxBits);
-
-		//_freeBuffer(_rxBuffer);
-		//_freeBuffer(_txBuffer);
 		_open = false;
 	}
 
@@ -261,10 +258,8 @@ class FastSerial: public Stream {
 	__attribute__ ((noinline)) void setBuffers(uint8_t* rxPtr, uint16_t rxSpace, uint8_t* txPtr, uint16_t txSpace)
 	{
 		// allocate buffers
-		if (!_allocBuffer(_rxBuffer, rxSpace ? : _default_rx_buffer_size) || !_allocBuffer(_txBuffer, txSpace ?	: _default_tx_buffer_size)) {
-			end();
-			return; // couldn't allocate buffers - fatal
-		}
+		_allocBuffer(_rxBuffer, rxPtr, rxSpace);
+		_allocBuffer(_txBuffer, txPtr, txSpace);
 	}
 	
 	__attribute__ ((noinline)) virtual void begin(long baud)
@@ -345,55 +340,13 @@ class FastSerial: public Stream {
 	/// @param	size		The desired buffer size.
 	/// @returns			True if the buffer was allocated successfully.
 	///
-	__attribute__ ((noinline)) static bool _allocBuffer(RingBuffer *buffer, unsigned int size)
+	__attribute__ ((noinline)) void _allocBuffer(RingBuffer *buffer, uint8_t* bufPtr, unsigned int size)
 	{
-		uint16_t	mask;
-		uint8_t		shift;
-
-		// init buffer state
-		buffer->head = buffer->tail = 0;
-
-		// Compute the power of 2 greater or equal to the requested buffer size
-		// and then a mask to simplify wrapping operations.  Using __builtin_clz
-		// would seem to make sense, but it uses a 256(!) byte table.
-		// Note that we ignore requests for more than BUFFER_MAX space.
-		for (shift = 1; (1U << shift) < min(_max_buffer_size, size); shift++)
-		;
-		mask = (1 << shift) - 1;
-
-		// If the descriptor already has a buffer allocated we need to take
-		// care of it.
-		if (buffer->bytes) {
-
-			// If the allocated buffer is already the correct size then
-			// we have nothing to do
-			if (buffer->mask == mask)
-			return true;
-
-			// Dispose of the old buffer.
-			free(buffer->bytes);
-		}
-		buffer->mask = mask;
-
-		// allocate memory for the buffer - if this fails, we fail.
-		buffer->bytes = (uint8_t *) malloc(buffer->mask + 1);
-
-		return (buffer->bytes != NULL);
-	}
-
-
-	/// Frees the allocated buffer in a descriptor
-	///
-	/// @param	buffer		The descriptor whose buffer should be freed.
-	///
-	__attribute__ ((noinline)) static void _freeBuffer(RingBuffer *buffer)
-	{
-		buffer->head = buffer->tail = 0;
-		buffer->mask = 0;
-		if (NULL != buffer->bytes) {
-			free(buffer->bytes);
-			buffer->bytes = NULL;
-		}
+		uint8_t i;
+		for (i = 1; (1U << i) <= size; ++i);
+		
+		buffer->mask = (1U << i - 1) - 1;
+		buffer->bytes = bufPtr;
 	}
 
 	/// default receive buffer size

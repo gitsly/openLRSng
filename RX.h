@@ -482,8 +482,8 @@ uint8_t tx_buf[COM_BUF_MAXSIZE]; // TX buffer (downlink)(1 byte reserved for tra
 // 0x00 link info [RSSI] [AFCC]*2 etc...
 // type 0x38-0x3f downlink serial data 1-COM_BUF_MAXSIZE bytes
 
-#define SERIAL_BUF_RX_SIZE 255
-#define SERIAL_BUF_TX_SIZE 64 // 63 crashes the RX after some short time, Investigate mask usage in serialport.
+#define SERIAL_BUF_RX_SIZE 256
+#define SERIAL_BUF_TX_SIZE 64
 uint8_t serial_rxbuffer[SERIAL_BUF_RX_SIZE];
 uint8_t serial_txbuffer[SERIAL_BUF_TX_SIZE];
 
@@ -607,7 +607,8 @@ void setup()
   pinMode(0, INPUT);   // Serial Rx
   pinMode(1, OUTPUT);  // Serial Tx
 	
-  Serial.begin(115200, SERIAL_BUF_RX_SIZE, SERIAL_BUF_TX_SIZE);
+  Serial.setBuffers(serial_rxbuffer, SERIAL_BUF_RX_SIZE, serial_txbuffer, SERIAL_BUF_TX_SIZE);
+  Serial.begin(115200);
   rxReadEeprom();
   failsafeLoad();
   Serial.print("OpenLRSng RX starting ");

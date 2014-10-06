@@ -352,11 +352,11 @@ void setup(void)
 #endif
   buzzerInit();
 
-	//Serial.setBuffers(serial_rxbuffer, SERIAL_BUF_RX_SIZE, serial_txbuffer, SERIAL_BUF_TX_SIZE);
+	Serial.setBuffers(serial_rxbuffer, SERIAL_BUF_RX_SIZE, serial_txbuffer, SERIAL_BUF_TX_SIZE);
 #ifdef __AVR_ATmega32U4__
   Serial.begin(0); // Suppress warning on overflow on Leonardo
 #else
-  Serial.begin(115200, SERIAL_BUF_RX_SIZE, SERIAL_BUF_TX_SIZE);
+  Serial.begin(115200);
 #endif
   profileInit();
   txReadEeprom();
@@ -394,7 +394,7 @@ void setup(void)
     TelemetrySerial.begin((serialMode == 3) ? 100000 : 115200); // SBUS is 100000 rest 115200
   } else {
     // switch to userdefined baudrate here
-    TelemetrySerial.begin(bind_data.serial_baudrate, SERIAL_BUF_RX_SIZE, SERIAL_BUF_TX_SIZE);
+    TelemetrySerial.begin(bind_data.serial_baudrate);
   }
   checkButton();
 

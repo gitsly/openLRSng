@@ -68,7 +68,7 @@ static void mavlink_crc(uint8_t* buf)
 
 
 // return available space in rx buffer as a percentage
-inline uint8_t	serial_space(uint8_t available, uint8_t max)
+inline uint8_t	serial_space(uint16_t available, uint16_t max)
 {
 	uint16_t space = max - available;
 	space = (100 * (space / 8)) / (max / 8);

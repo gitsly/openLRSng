@@ -129,19 +129,12 @@ class FastSerial: public Stream {
 		FastSerial_serialInitialized |= (1 << portNumber);
 	}
 
-	/// @name 	Serial API
-	//@{
-	__attribute__ ((noinline)) virtual void begin(long baud)
-	{
-		begin(baud, 0, 0);
-	}
-
 	__attribute__ ((noinline)) virtual void end(void)
 	{
 		*_ucsrb &= ~(_portEnableBits | _portTxBits);
 
-		_freeBuffer(_rxBuffer);
-		_freeBuffer(_txBuffer);
+		//_freeBuffer(_rxBuffer);
+		//_freeBuffer(_txBuffer);
 		_open = false;
 	}
 
@@ -264,28 +257,25 @@ class FastSerial: public Stream {
 	///						is open, or set to ::_default_tx_buffer_size if it
 	///						is currently closed.
 	///
-	__attribute__ ((noinline)) virtual void begin(long baud, unsigned int rxSpace, unsigned int txSpace)
+	
+	__attribute__ ((noinline)) void setBuffers(uint8_t* rxPtr, uint16_t rxSpace, uint8_t* txPtr, uint16_t txSpace)
+	{
+		// allocate buffers
+		if (!_allocBuffer(_rxBuffer, rxSpace ? : _default_rx_buffer_size) || !_allocBuffer(_txBuffer, txSpace ?	: _default_tx_buffer_size)) {
+			end();
+			return; // couldn't allocate buffers - fatal
+		}
+	}
+	
+	__attribute__ ((noinline)) virtual void begin(long baud)
 	{
 		uint16_t ubrr;
 		bool use_u2x = true;
 
 		// if we are currently open...
 		if (_open) {
-			// If the caller wants to preserve the buffer sizing, work out what
-			// it currently is...
-			if (0 == rxSpace)
-			rxSpace = _rxBuffer->mask + 1;
-			if (0 == txSpace)
-			txSpace = _txBuffer->mask + 1;
-
 			// close the port in its current configuration, clears _open
 			end();
-		}
-
-		// allocate buffers
-		if (!_allocBuffer(_rxBuffer, rxSpace ? : _default_rx_buffer_size) || !_allocBuffer(_txBuffer, txSpace ?	: _default_tx_buffer_size)) {
-			end();
-			return; // couldn't allocate buffers - fatal
 		}
 
 		// reset buffer pointers

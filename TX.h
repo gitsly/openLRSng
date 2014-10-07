@@ -1,9 +1,7 @@
 /****************************************************
  * OpenLRSng transmitter code
  ****************************************************/
-
 uint32_t mavlink_last_inject_time = 0;
-uint16_t mavlink_debug = 0;
 uint16_t rxerrors = 0;
 
 uint8_t RF_channel = 0;
@@ -652,7 +650,7 @@ void loop(void)
       rx_buf[i] = spiReadData();
     }
 
-    if ((tx_buf[0] ^ rx_buf[0]) & 0x40) { // 0x40 = 0b01000000
+    if ((tx_buf[0] ^ rx_buf[0]) & 0x40) {
       tx_buf[0] ^= 0x40; // swap sequence to ack
 	 
 	  if ((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_MAVLINK) { // Mavlink Rx only sends transparent serial data
@@ -664,10 +662,10 @@ void loop(void)
 	        TelemetrySerial.write(ch);
         }
 	  }
-	  else if ((rx_buf[0] & 0x38) == 0x38) { // 0b00111000
+	  else if ((rx_buf[0] & 0x38) == 0x38) {
         uint8_t i;
         // transparent serial data...
-        for (i = 0; i<= (rx_buf[0] & 7);) { // 7 = 0b00000111
+        for (i = 0; i<= (rx_buf[0] & 7);) {
           i++;
           if (bind_data.flags & TELEMETRY_FRSKY) {
             frskyUserData(rx_buf[i]);
@@ -675,7 +673,7 @@ void loop(void)
             TelemetrySerial.write(rx_buf[i]);
           }
         }
-      } else if ((rx_buf[0] & 0x3F) == 0) { // 0x3F = 0b00111111 = 63
+      } else if ((rx_buf[0] & 0x3F) == 0) {
         RSSI_rx = rx_buf[1];
         RX_ain0 = rx_buf[2];
         RX_ain1 = rx_buf[3];
@@ -712,6 +710,7 @@ void loop(void)
     while (PPM[2] > 1013);
 #endif
 
+	// !!! Remove 1 before potential merge !!!
     if (1 || (ppmAge < 8) || (!TX_CONFIG_GETMINCH())) {
       ppmAge++;
 

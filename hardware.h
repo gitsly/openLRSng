@@ -807,10 +807,8 @@ void setupRfmInterrupt()
 #error TX module cannot be used as RX
 #endif
 
-// is this correct? badzz to verify
-DefineSerialPort(Serial, 0);
-DefineSerialPort(Serial1, 1);
-#define TelemetrySerial Serial1
+DefineSerialPort(Serial10, 1);
+#define TelemetrySerial Serial10
 
 #define USE_ICP1 // use ICP1 for PPM input for less jitter
 #define PPM_IN 4 // ICP1

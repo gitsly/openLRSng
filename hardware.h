@@ -309,9 +309,12 @@ struct rxSpecialPinMap rxSpecialPins[] = {
   { 6, PINMAP_SBUS},
   { 6, PINMAP_SUMD},
 };
+
+DefineSerialPort(Serial, 0);
+
 #endif
 
-DefineSerialPort(Serial, 0); // Previously: #define TelemetrySerial Serial (why do this in RX operation? bug? /br
+//DefineSerialPort(Serial, 0); // Previously: #define TelemetrySerial Serial (why do this in RX operation?)
 
 #define Red_LED          13
 #define Green_LED        12

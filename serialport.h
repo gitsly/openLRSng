@@ -101,9 +101,9 @@ struct RingBuffer {
 # define FS_MAX_PORTS   1
 #endif
 
-#ifndef min
-#define min(a, b) (a < b ? a : b)
-#endif
+//#ifndef min
+//#define min(a, b) (a < b ? a : b)
+//#endif
 
 
 RingBuffer __FastSerial__rxBuffer[FS_MAX_PORTS];
@@ -345,7 +345,7 @@ class FastSerial: public Stream {
 		uint8_t i;
 		for (i = 1; (1U << i) <= size; ++i);
 		
-		buffer->mask = (1U << i - 1) - 1;
+		buffer->mask = (1U << (i - 1)) - 1;
 		buffer->bytes = bufPtr;
 	}
 

@@ -879,7 +879,6 @@ retry:
 						{
 							for (i = 0; i <= (rx_buf[0] & 7);) {
 								i++;
-								const uint8_t ch = rx_buf[i];
 								Serial.write(rx_buf[i]);
 							}
 						}

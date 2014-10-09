@@ -85,10 +85,10 @@
 ///
 /// Public so the interrupt handlers can see it
 struct RingBuffer {
-	volatile uint16_t head, tail;	///< head and tail pointers
-	volatile uint16_t overflow;		///< Incremented every time the buffer can't fit a character.
-	uint16_t mask;					///< buffer size mask for pointer wrap
-	uint8_t *bytes;					///< pointer to allocated buffer
+  volatile uint16_t head, tail;	///< head and tail pointers
+  volatile uint16_t overflow;		///< Incremented every time the buffer can't fit a character.
+  uint16_t mask;					///< buffer size mask for pointer wrap
+  uint8_t *bytes;					///< pointer to allocated buffer
 };
 
 #if   defined(UDR3)
@@ -110,256 +110,252 @@ RingBuffer __FastSerial__rxBuffer[FS_MAX_PORTS];
 RingBuffer __FastSerial__txBuffer[FS_MAX_PORTS];
 uint8_t FastSerial_serialInitialized = 0; 	/// Bit mask for initialized ports
 
-class FastSerial: public Stream {
-	public:
+class FastSerial: public Stream
+{
+public:
 
-	/// Constructor
-	__attribute__ ((noinline)) FastSerial(const uint8_t portNumber, volatile uint8_t *ubrrh, volatile uint8_t *ubrrl, volatile uint8_t *ucsra,
-	volatile uint8_t *ucsrb, const uint8_t u2x, const uint8_t portEnableBits, const uint8_t portTxBits)  :
-	_ubrrh(ubrrh),
-	_ubrrl(ubrrl),
-	_ucsra(ucsra),
-	_ucsrb(ucsrb),
-	_u2x(u2x),
-	_portEnableBits(portEnableBits),
-	_portTxBits(portTxBits),
-	_rxBuffer(&__FastSerial__rxBuffer[portNumber]),
-	_txBuffer(&__FastSerial__txBuffer[portNumber])
-	{
-		FastSerial_serialInitialized |= (1 << portNumber);
-	}
+  /// Constructor
+  __attribute__ ((noinline)) FastSerial(const uint8_t portNumber, volatile uint8_t *ubrrh, volatile uint8_t *ubrrl, volatile uint8_t *ucsra,
+                                        volatile uint8_t *ucsrb, const uint8_t u2x, const uint8_t portEnableBits, const uint8_t portTxBits)  :
+    _ubrrh(ubrrh),
+    _ubrrl(ubrrl),
+    _ucsra(ucsra),
+    _ucsrb(ucsrb),
+    _u2x(u2x),
+    _portEnableBits(portEnableBits),
+    _portTxBits(portTxBits),
+    _rxBuffer(&__FastSerial__rxBuffer[portNumber]),
+    _txBuffer(&__FastSerial__txBuffer[portNumber]) {
+    FastSerial_serialInitialized |= (1 << portNumber);
+  }
 
-	__attribute__ ((noinline)) virtual void end(void)
-	{
-		*_ucsrb &= ~(_portEnableBits | _portTxBits);
-		_open = false;
-	}
+  __attribute__ ((noinline)) virtual void end(void) {
+    *_ucsrb &= ~(_portEnableBits | _portTxBits);
+    _open = false;
+  }
 
-	__attribute__ ((noinline)) virtual int available(void)
-	{
-		if (!_open)
-		return (-1);
-		return ((_rxBuffer->head - _rxBuffer->tail) & _rxBuffer->mask);
-	}
+  __attribute__ ((noinline)) virtual int available(void) {
+    if (!_open) {
+      return (-1);
+    }
+    return ((_rxBuffer->head - _rxBuffer->tail) & _rxBuffer->mask);
+  }
 
-	__attribute__ ((noinline)) virtual int txspace(void)
-	{
-		if (!_open)
-		return (-1);
-		return ((_txBuffer->mask+1) - ((_txBuffer->head - _txBuffer->tail) & _txBuffer->mask));
-	}
-	
-	__attribute__ ((noinline)) virtual int read(void)
-	{
-		uint8_t c;
+  __attribute__ ((noinline)) virtual int txspace(void) {
+    if (!_open) {
+      return (-1);
+    }
+    return ((_txBuffer->mask+1) - ((_txBuffer->head - _txBuffer->tail) & _txBuffer->mask));
+  }
 
-		// if the head and tail are equal, the buffer is empty
-		if (!_open || (_rxBuffer->head == _rxBuffer->tail))
-		return (-1);
+  __attribute__ ((noinline)) virtual int read(void) {
+    uint8_t c;
 
-		// pull character from tail
-		c = _rxBuffer->bytes[_rxBuffer->tail];
-		_rxBuffer->tail = (_rxBuffer->tail + 1) & _rxBuffer->mask;
+    // if the head and tail are equal, the buffer is empty
+    if (!_open || (_rxBuffer->head == _rxBuffer->tail)) {
+      return (-1);
+    }
 
-		return (c);
-	}
+    // pull character from tail
+    c = _rxBuffer->bytes[_rxBuffer->tail];
+    _rxBuffer->tail = (_rxBuffer->tail + 1) & _rxBuffer->mask;
 
-	__attribute__ ((noinline)) virtual int peek(void)
-	{
+    return (c);
+  }
 
-		// if the head and tail are equal, the buffer is empty
-		if (!_open || (_rxBuffer->head == _rxBuffer->tail))
-		return (-1);
+  __attribute__ ((noinline)) virtual int peek(void) {
 
-		// pull character from tail
-		return (_rxBuffer->bytes[_rxBuffer->tail]);
-	}
+    // if the head and tail are equal, the buffer is empty
+    if (!_open || (_rxBuffer->head == _rxBuffer->tail)) {
+      return (-1);
+    }
 
-	__attribute__ ((noinline)) virtual void flush(void)
-	{
-		// don't reverse this or there may be problems if the RX interrupt
-		// occurs after reading the value of _rxBuffer->head but before writing
-		// the value to _rxBuffer->tail; the previous value of head
-		// may be written to tail, making it appear as if the buffer
-		// don't reverse this or there may be problems if the RX interrupt
-		// occurs after reading the value of head but before writing
-		// the value to tail; the previous value of rx_buffer_head
-		// may be written to tail, making it appear as if the buffer
-		// were full, not empty.
-		_rxBuffer->head = _rxBuffer->tail;
+    // pull character from tail
+    return (_rxBuffer->bytes[_rxBuffer->tail]);
+  }
 
-		// don't reverse this or there may be problems if the TX interrupt
-		// occurs after reading the value of _txBuffer->tail but before writing
-		// the value to _txBuffer->head.
-		_txBuffer->tail = _txBuffer->head;
-	}
+  __attribute__ ((noinline)) virtual void flush(void) {
+    // don't reverse this or there may be problems if the RX interrupt
+    // occurs after reading the value of _rxBuffer->head but before writing
+    // the value to _rxBuffer->tail; the previous value of head
+    // may be written to tail, making it appear as if the buffer
+    // don't reverse this or there may be problems if the RX interrupt
+    // occurs after reading the value of head but before writing
+    // the value to tail; the previous value of rx_buffer_head
+    // may be written to tail, making it appear as if the buffer
+    // were full, not empty.
+    _rxBuffer->head = _rxBuffer->tail;
+
+    // don't reverse this or there may be problems if the TX interrupt
+    // occurs after reading the value of _txBuffer->tail but before writing
+    // the value to _txBuffer->head.
+    _txBuffer->tail = _txBuffer->head;
+  }
 
 
-	__attribute__ ((noinline)) uint16_t rxOverflowCounter(void)
-	{
-		if (!_open)
-		return 0;
-		return _rxBuffer->overflow;
-	}
+  __attribute__ ((noinline)) uint16_t rxOverflowCounter(void) {
+    if (!_open) {
+      return 0;
+    }
+    return _rxBuffer->overflow;
+  }
 
-	__attribute__ ((noinline)) virtual size_t write(uint8_t c)
-	{
-		uint16_t i;
+  __attribute__ ((noinline)) virtual size_t write(uint8_t c) {
+    uint16_t i;
 
-		if (!_open) // drop bytes if not open
-		return 0;
+    if (!_open) { // drop bytes if not open
+      return 0;
+    }
 
-		// wait for room in the tx buffer
-		i = (_txBuffer->head + 1) & _txBuffer->mask;
+    // wait for room in the tx buffer
+    i = (_txBuffer->head + 1) & _txBuffer->mask;
 
-		// if the port is set into non-blocking mode, then drop the byte
-		// if there isn't enough room for it in the transmit buffer
-		if (_nonblocking_writes && i == _txBuffer->tail) {
-			return 0;
-		}
+    // if the port is set into non-blocking mode, then drop the byte
+    // if there isn't enough room for it in the transmit buffer
+    if (_nonblocking_writes && i == _txBuffer->tail) {
+      return 0;
+    }
 
-		while (i == _txBuffer->tail);
+    while (i == _txBuffer->tail);
 
-		// add byte to the buffer
-		_txBuffer->bytes[_txBuffer->head] = c;
-		_txBuffer->head = i;
+    // add byte to the buffer
+    _txBuffer->bytes[_txBuffer->head] = c;
+    _txBuffer->head = i;
 
-		// enable the data-ready interrupt, as it may be off if the buffer is empty
-		*_ucsrb |= _portTxBits;
+    // enable the data-ready interrupt, as it may be off if the buffer is empty
+    *_ucsrb |= _portTxBits;
 
-		// return number of bytes written (always 1)
-		return 1;
-	}
-	
-	using Stream::write;
-	//@}
+    // return number of bytes written (always 1)
+    return 1;
+  }
 
-	/// Extended port open method
-	///
-	/// Allows for both opening with specified buffer sizes, and re-opening
-	/// to adjust a subset of the port's settings.
-	///
-	/// @note	RingBuffer sizes greater than ::_max_buffer_size will be rounded
-	///			down.
-	///
-	/// @param	baud		Selects the speed that the port will be
-	///						configured to.  If zero, the port speed is left
-	///						unchanged.
-	/// @param rxSpace		Sets the receive buffer size for the port.  If zero
-	///						then the buffer size is left unchanged if the port
-	///						is open, or set to ::_default_rx_buffer_size if it is
-	///						currently closed.
-	/// @param txSpace		Sets the transmit buffer size for the port.  If zero
-	///						then the buffer size is left unchanged if the port
-	///						is open, or set to ::_default_tx_buffer_size if it
-	///						is currently closed.
-	///
-	
-	__attribute__ ((noinline)) void setBuffers(uint8_t* rxPtr, uint16_t rxSpace, uint8_t* txPtr, uint16_t txSpace)
-	{
-		// allocate buffers
-		_allocBuffer(_rxBuffer, rxPtr, rxSpace);
-		_allocBuffer(_txBuffer, txPtr, txSpace);
-	}
-	
-	__attribute__ ((noinline)) virtual void begin(long baud)
-	{
-		uint16_t ubrr;
-		bool use_u2x = true;
+  using Stream::write;
+  //@}
 
-		// if we are currently open...
-		if (_open) {
-			// close the port in its current configuration, clears _open
-			end();
-		}
+  /// Extended port open method
+  ///
+  /// Allows for both opening with specified buffer sizes, and re-opening
+  /// to adjust a subset of the port's settings.
+  ///
+  /// @note	RingBuffer sizes greater than ::_max_buffer_size will be rounded
+  ///			down.
+  ///
+  /// @param	baud		Selects the speed that the port will be
+  ///						configured to.  If zero, the port speed is left
+  ///						unchanged.
+  /// @param rxSpace		Sets the receive buffer size for the port.  If zero
+  ///						then the buffer size is left unchanged if the port
+  ///						is open, or set to ::_default_rx_buffer_size if it is
+  ///						currently closed.
+  /// @param txSpace		Sets the transmit buffer size for the port.  If zero
+  ///						then the buffer size is left unchanged if the port
+  ///						is open, or set to ::_default_tx_buffer_size if it
+  ///						is currently closed.
+  ///
 
-		// reset buffer pointers
-		_txBuffer->head = _txBuffer->tail = 0;
-		_rxBuffer->head = _rxBuffer->tail = 0;
+  __attribute__ ((noinline)) void setBuffers(uint8_t* rxPtr, uint16_t rxSpace, uint8_t* txPtr, uint16_t txSpace) {
+    // allocate buffers
+    _allocBuffer(_rxBuffer, rxPtr, rxSpace);
+    _allocBuffer(_txBuffer, txPtr, txSpace);
+  }
 
-		// mark the port as open
-		_open = true;
+  __attribute__ ((noinline)) virtual void begin(long baud) {
+    uint16_t ubrr;
+    bool use_u2x = true;
 
-		// If the user has supplied a new baud rate, compute the new UBRR value.
-		if (baud > 0) {
-			#if F_CPU == 16000000UL
-			// hardcoded exception for compatibility with the bootloader shipped
-			// with the Duemilanove and previous boards and the firmware on the 8U2
-			// on the Uno and Mega 2560.
-			if (baud == 57600)
-			use_u2x = false;
-			#endif
+    // if we are currently open...
+    if (_open) {
+      // close the port in its current configuration, clears _open
+      end();
+    }
 
-			if (use_u2x) {
-				*_ucsra = 1 << _u2x;
-				ubrr = (F_CPU / 4 / baud - 1) / 2;
-				} else {
-				*_ucsra = 0;
-				ubrr = (F_CPU / 8 / baud - 1) / 2;
-			}
+    // reset buffer pointers
+    _txBuffer->head = _txBuffer->tail = 0;
+    _rxBuffer->head = _rxBuffer->tail = 0;
 
-			*_ubrrh = ubrr >> 8;
-			*_ubrrl = ubrr;
-		}
+    // mark the port as open
+    _open = true;
 
-		*_ucsrb |= _portEnableBits;
-	}
+    // If the user has supplied a new baud rate, compute the new UBRR value.
+    if (baud > 0) {
+#if F_CPU == 16000000UL
+      // hardcoded exception for compatibility with the bootloader shipped
+      // with the Duemilanove and previous boards and the firmware on the 8U2
+      // on the Uno and Mega 2560.
+      if (baud == 57600) {
+        use_u2x = false;
+      }
+#endif
 
-	// ask for writes to be blocking or non-blocking
-	void set_blocking_writes(bool blocking) {
-		_nonblocking_writes = !blocking;
-	}
+      if (use_u2x) {
+        *_ucsra = 1 << _u2x;
+        ubrr = (F_CPU / 4 / baud - 1) / 2;
+      } else {
+        *_ucsra = 0;
+        ubrr = (F_CPU / 8 / baud - 1) / 2;
+      }
 
-	private:
+      *_ubrrh = ubrr >> 8;
+      *_ubrrl = ubrr;
+    }
 
-	// register accessors
-	volatile uint8_t * const _ubrrh;
-	volatile uint8_t * const _ubrrl;
-	volatile uint8_t * const _ucsra;
-	volatile uint8_t * const _ucsrb;
+    *_ucsrb |= _portEnableBits;
+  }
 
-	// register magic numbers
-	const uint8_t	_u2x;
-	const uint8_t	_portEnableBits;		///< rx, tx and rx interrupt enables
-	const uint8_t	_portTxBits;			///< tx data and completion interrupt enables
+  // ask for writes to be blocking or non-blocking
+  void set_blocking_writes(bool blocking) {
+    _nonblocking_writes = !blocking;
+  }
+
+private:
+
+  // register accessors
+  volatile uint8_t * const _ubrrh;
+  volatile uint8_t * const _ubrrl;
+  volatile uint8_t * const _ucsra;
+  volatile uint8_t * const _ucsrb;
+
+  // register magic numbers
+  const uint8_t	_u2x;
+  const uint8_t	_portEnableBits;		///< rx, tx and rx interrupt enables
+  const uint8_t	_portTxBits;			///< tx data and completion interrupt enables
 
 
-	// ring buffers
-	RingBuffer			* const _rxBuffer;
-	RingBuffer			* const _txBuffer;
-	bool 			_open;
+  // ring buffers
+  RingBuffer			* const _rxBuffer;
+  RingBuffer			* const _txBuffer;
+  bool 			_open;
 
-	// whether writes to the port should block waiting
-	// for enough space to appear
-	bool			_nonblocking_writes;
+  // whether writes to the port should block waiting
+  // for enough space to appear
+  bool			_nonblocking_writes;
 
-	/// Allocates a buffer of the given size
-	///
-	/// @param	buffer		The buffer descriptor for which the buffer will
-	///						will be allocated.
-	/// @param	size		The desired buffer size.
-	/// @returns			True if the buffer was allocated successfully.
-	///
-	__attribute__ ((noinline)) void _allocBuffer(RingBuffer *buffer, uint8_t* bufPtr, unsigned int size)
-	{
-		uint8_t i;
-		for (i = 1; (1U << i) <= size; ++i);
-		
-		buffer->mask = (1U << (i - 1)) - 1;
-		buffer->bytes = bufPtr;
-	}
+  /// Allocates a buffer of the given size
+  ///
+  /// @param	buffer		The buffer descriptor for which the buffer will
+  ///						will be allocated.
+  /// @param	size		The desired buffer size.
+  /// @returns			True if the buffer was allocated successfully.
+  ///
+  __attribute__ ((noinline)) void _allocBuffer(RingBuffer *buffer, uint8_t* bufPtr, unsigned int size) {
+    uint8_t i;
+    for (i = 1; (1U << i) <= size; ++i);
 
-	/// default receive buffer size
-	static const unsigned int	_default_rx_buffer_size = 128;
+    buffer->mask = (1U << (i - 1)) - 1;
+    buffer->bytes = bufPtr;
+  }
 
-	/// default transmit buffer size
-	static const unsigned int	_default_tx_buffer_size = 16;
+  /// default receive buffer size
+  static const unsigned int	_default_rx_buffer_size = 128;
 
-	/// maxium tx/rx buffer size
-	/// @note if we could bring the max size down to 256, the mask and head/tail
-	///       pointers in the buffer could become uint8_t.
-	///
-	static const unsigned int	_max_buffer_size = 512;
+  /// default transmit buffer size
+  static const unsigned int	_default_tx_buffer_size = 16;
+
+  /// maxium tx/rx buffer size
+  /// @note if we could bring the max size down to 256, the mask and head/tail
+  ///       pointers in the buffer could become uint8_t.
+  ///
+  static const unsigned int	_max_buffer_size = 512;
 };
 
 

@@ -600,7 +600,7 @@ void setup()
 
   pinMode(0, INPUT);   // Serial Rx
   pinMode(1, OUTPUT);  // Serial Tx
-	
+
   Serial.setBuffers(serial_rxbuffer, SERIAL_BUF_RX_SIZE, serial_txbuffer, SERIAL_BUF_TX_SIZE);
   Serial.begin(115200);
   rxReadEeprom();
@@ -716,7 +716,7 @@ void setup()
   linkAcquired = 0;
   lastPacketTimeUs = micros();
 
-	mavlinkIncomingFrame.Reset();
+  mavlinkIncomingFrame.Reset();
 }
 
 void slaveHop()
@@ -810,15 +810,15 @@ retry:
 
     updateLBeep(false);
 
-		if ((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_MAVLINK
-		&& mavlinkIncomingFrame.IsIdle()
-		&& timeUs - mavlink_last_inject_time > MAVLINK_INJECT_INTERVAL) {
+    if ((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_MAVLINK
+        && mavlinkIncomingFrame.IsIdle()
+        && timeUs - mavlink_last_inject_time > MAVLINK_INJECT_INTERVAL) {
 
-			const uint8_t space = serial_space(Serial.available(), SERIAL_BUF_RX_SIZE);
-			MAVLink_report(space, 0, smoothRSSI, rxerrors);
-			mavlink_last_inject_time = timeUs;
-		}
-			
+      const uint8_t space = serial_space(Serial.available(), SERIAL_BUF_RX_SIZE);
+      MAVLink_report(space, 0, smoothRSSI, rxerrors);
+      mavlink_last_inject_time = timeUs;
+    }
+
 
 
 #ifdef SLAVE_STATISTICS
@@ -864,25 +864,23 @@ retry:
           uint8_t i;
           tx_buf[0] ^= 0x80; // signal that we got it
 
-					if (rx_config.pinMapping[TXD_OUTPUT] == PINMAP_TXD) {
+          if (rx_config.pinMapping[TXD_OUTPUT] == PINMAP_TXD) {
 
-						if ((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_MAVLINK) {
-							
-							for (i = 0; i <= (rx_buf[0] & 7);) {
-								i++;
-								const uint8_t ch = rx_buf[i];
-								Serial.write(ch);
-								mavlinkIncomingFrame.Parse(ch);
-							}
-						}
-						else
-						{
-							for (i = 0; i <= (rx_buf[0] & 7);) {
-								i++;
-								Serial.write(rx_buf[i]);
-							}
-						}
-					}
+            if ((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_MAVLINK) {
+
+              for (i = 0; i <= (rx_buf[0] & 7);) {
+                i++;
+                const uint8_t ch = rx_buf[i];
+                Serial.write(ch);
+                mavlinkIncomingFrame.Parse(ch);
+              }
+            } else {
+              for (i = 0; i <= (rx_buf[0] & 7);) {
+                i++;
+                Serial.write(rx_buf[i]);
+              }
+            }
+          }
         }
       }
     }
@@ -901,51 +899,50 @@ retry:
         tx_buf[0] &= 0xc0;
         tx_buf[0] ^= 0x40; // swap sequence as we have new data
 
-		if((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_MAVLINK) {
-			uint8_t bytes = 0;
-			while ((bytes < bind_data.serial_downlink - 1) && Serial.available() > 0) {
-				bytes++;
-				const uint8_t ch = Serial.read();
-				tx_buf[bytes] = ch;
-			}
-			tx_buf[0] |= (0x3F & bytes);
-		}
-		else {
-			if (Serial.available() > 0) {
-			  uint8_t bytes = 0;
-			  while ((bytes < bind_data.serial_downlink - 1) && Serial.available() > 0) {
-					bytes++;
-					tx_buf[bytes] = Serial.read();
-			  }
-			  tx_buf[0] |= (0x37 & bytes); 
-			} else {
-			  // tx_buf[0] lowest 6 bits left at 0
-			  tx_buf[1] = lastRSSIvalue;
+        if((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_MAVLINK) {
+          uint8_t bytes = 0;
+          while ((bytes < bind_data.serial_downlink - 1) && Serial.available() > 0) {
+            bytes++;
+            const uint8_t ch = Serial.read();
+            tx_buf[bytes] = ch;
+          }
+          tx_buf[0] |= (0x3F & bytes);
+        } else {
+          if (Serial.available() > 0) {
+            uint8_t bytes = 0;
+            while ((bytes < bind_data.serial_downlink - 1) && Serial.available() > 0) {
+              bytes++;
+              tx_buf[bytes] = Serial.read();
+            }
+            tx_buf[0] |= (0x37 & bytes);
+          } else {
+            // tx_buf[0] lowest 6 bits left at 0
+            tx_buf[1] = lastRSSIvalue;
 
-			  if (rx_config.pinMapping[ANALOG0_OUTPUT] == PINMAP_ANALOG) {
-				tx_buf[2] = analogRead(OUTPUT_PIN[ANALOG0_OUTPUT]) >> 2;
-	#ifdef ANALOG0_OUTPUT_ALT
-			  } else if (rx_config.pinMapping[ANALOG0_OUTPUT_ALT] == PINMAP_ANALOG) {
-				tx_buf[2] = analogRead(OUTPUT_PIN[ANALOG0_OUTPUT_ALT]) >> 2;
-	#endif
-			  } else {
-				tx_buf[2] = 0;
-			  }
+            if (rx_config.pinMapping[ANALOG0_OUTPUT] == PINMAP_ANALOG) {
+              tx_buf[2] = analogRead(OUTPUT_PIN[ANALOG0_OUTPUT]) >> 2;
+#ifdef ANALOG0_OUTPUT_ALT
+            } else if (rx_config.pinMapping[ANALOG0_OUTPUT_ALT] == PINMAP_ANALOG) {
+              tx_buf[2] = analogRead(OUTPUT_PIN[ANALOG0_OUTPUT_ALT]) >> 2;
+#endif
+            } else {
+              tx_buf[2] = 0;
+            }
 
-			  if (rx_config.pinMapping[ANALOG1_OUTPUT] == PINMAP_ANALOG) {
-				tx_buf[3] = analogRead(OUTPUT_PIN[ANALOG1_OUTPUT]) >> 2;
-	#ifdef ANALOG1_OUTPUT_ALT
-			  } else if (rx_config.pinMapping[ANALOG1_OUTPUT_ALT] == PINMAP_ANALOG) {
-				tx_buf[3] = analogRead(OUTPUT_PIN[ANALOG1_OUTPUT_ALT]) >> 2;
-	#endif
-			  } else {
-				tx_buf[3] = 0;
-			  }
-			  tx_buf[4] = (lastAFCCvalue >> 8);
-			  tx_buf[5] = lastAFCCvalue & 0xff;
-			  tx_buf[6] = countSetBits(linkQuality & 0x7fff);
-			} // else (no serial data available, send misc stuff).
-		}
+            if (rx_config.pinMapping[ANALOG1_OUTPUT] == PINMAP_ANALOG) {
+              tx_buf[3] = analogRead(OUTPUT_PIN[ANALOG1_OUTPUT]) >> 2;
+#ifdef ANALOG1_OUTPUT_ALT
+            } else if (rx_config.pinMapping[ANALOG1_OUTPUT_ALT] == PINMAP_ANALOG) {
+              tx_buf[3] = analogRead(OUTPUT_PIN[ANALOG1_OUTPUT_ALT]) >> 2;
+#endif
+            } else {
+              tx_buf[3] = 0;
+            }
+            tx_buf[4] = (lastAFCCvalue >> 8);
+            tx_buf[5] = lastAFCCvalue & 0xff;
+            tx_buf[6] = countSetBits(linkQuality & 0x7fff);
+          } // else (no serial data available, send misc stuff).
+        }
       }
 #ifdef TEST_NO_ACK_BY_CH1
       if (PPM[0]<900) {
@@ -1005,7 +1002,7 @@ retry:
       if (numberOfLostPackets == 0) {
         linkLossTimeMs = timeMs;
         lastBeaconTimeMs = 0;
-				rxerrors++;
+        rxerrors++;
       }
       numberOfLostPackets++;
       lastPacketTimeUs += getInterval(&bind_data);

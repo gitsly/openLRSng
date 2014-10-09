@@ -353,7 +353,7 @@ void setup(void)
 #ifdef __AVR_ATmega32U4__
   Serial.begin(0); // Suppress warning on overflow on Leonardo
 #else
-	Serial.setBuffers(serial_rxbuffer, SERIAL_BUF_RX_SIZE, serial_txbuffer, SERIAL_BUF_TX_SIZE);
+  Serial.setBuffers(serial_rxbuffer, SERIAL_BUF_RX_SIZE, serial_txbuffer, SERIAL_BUF_TX_SIZE);
   Serial.begin(115200);
 #endif
   profileInit();
@@ -373,7 +373,7 @@ void setup(void)
   digitalWrite(BTN, HIGH);
   Red_LED_ON ;
 
-	Serial.flush();
+  Serial.flush();
 
   Serial.print("OpenLRSng TX starting ");
   printVersion(version);
@@ -385,7 +385,7 @@ void setup(void)
   checkBND();
 
 #ifdef __AVR_ATmega32U4__ // badzz 
-	TelemetrySerial.setBuffers(serial_rxbuffer, SERIAL_BUF_RX_SIZE, serial_txbuffer, SERIAL_BUF_TX_SIZE);
+  TelemetrySerial.setBuffers(serial_rxbuffer, SERIAL_BUF_RX_SIZE, serial_txbuffer, SERIAL_BUF_TX_SIZE);
 #endif
   if (bind_data.serial_baudrate && (bind_data.serial_baudrate < 5)) {
     serialMode = bind_data.serial_baudrate;
@@ -623,10 +623,10 @@ void loop(void)
 
 
   if (serialMode) {
-		while (TelemetrySerial.available()) {
-				uint8_t ch = TelemetrySerial.read();
-				processChannelsFromSerial(ch);
-		}
+    while (TelemetrySerial.available()) {
+      uint8_t ch = TelemetrySerial.read();
+      processChannelsFromSerial(ch);
+    }
   }
 
 #ifdef __AVR_ATmega32U4__
@@ -652,17 +652,16 @@ void loop(void)
 
     if ((tx_buf[0] ^ rx_buf[0]) & 0x40) {
       tx_buf[0] ^= 0x40; // swap sequence to ack
-	 
-	  if ((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_MAVLINK) { // Mavlink Rx only sends transparent serial data
+
+      if ((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_MAVLINK) { // Mavlink Rx only sends transparent serial data
         const uint8_t byteCount = rx_buf[0] & 0x3F;
 
-				uint8_t i;
+        uint8_t i;
         for (i = 0; i < byteCount; i++) {
-					const uint8_t ch = rx_buf[i + 1];
-	        TelemetrySerial.write(ch);
+          const uint8_t ch = rx_buf[i + 1];
+          TelemetrySerial.write(ch);
         }
-	  }
-	  else if ((rx_buf[0] & 0x38) == 0x38) {
+      } else if ((rx_buf[0] & 0x38) == 0x38) {
         uint8_t i;
         // transparent serial data...
         for (i = 0; i<= (rx_buf[0] & 7);) {
@@ -710,7 +709,7 @@ void loop(void)
     while (PPM[2] > 1013);
 #endif
 
-	// !!! Remove 1 before potential merge !!!
+    // !!! Remove 1 before potential merge !!!
     if (1 || (ppmAge < 8) || (!TX_CONFIG_GETMINCH())) {
       ppmAge++;
 
@@ -739,7 +738,7 @@ void loop(void)
         }
         while ((bytes < maxbytes) && TelemetrySerial.available() > 0) {
           bytes++;
-					const uint8_t ch = (uint8_t)TelemetrySerial.read();
+          const uint8_t ch = (uint8_t)TelemetrySerial.read();
           tx_buf[bytes] = ch;
           serial_resend[bytes] = ch;
         }

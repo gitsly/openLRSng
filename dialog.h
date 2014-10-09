@@ -207,8 +207,8 @@ void bindPrint(void)
   printYesNo(tx_config.flags & MICROPPM);
 
   if ((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_MAVLINK) { // Only able to adjust serial downlink when using mavlink telemetry feature
-	Serial.print(F("D) Telemetry packet size: "));
-	Serial.println(bind_data.serial_downlink);
+    Serial.print(F("D) Telemetry packet size: "));
+    Serial.println(bind_data.serial_downlink);
   }
 
   Serial.print(F("Calculated packet interval: "));
@@ -896,7 +896,7 @@ void handleCLImenu(char c)
     case '8':
       Serial.println(F("Toggled telemetry!"));
       {
-		bind_data.flags = (bind_data.flags + TELEMETRY_PASSTHRU) % (TELEMETRY_MAVLINK + 8); // last mode + first.
+        bind_data.flags = (bind_data.flags + TELEMETRY_PASSTHRU) % (TELEMETRY_MAVLINK + 8); // last mode + first.
       }
       CLI_menu = -1;
       break;
@@ -1004,11 +1004,9 @@ void handleCLImenu(char c)
           if ((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_MAVLINK && (value >= 9) && (value < COM_BUF_MAXSIZE)) {
             bind_data.serial_downlink = value;
             valid_input = 1;
-          }
-		  else
-		  {
+          } else {
             valid_input = 1;
-		  }
+          }
           break;
         }
         if (valid_input) {

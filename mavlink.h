@@ -1,11 +1,11 @@
 struct mavlink_RADIO_v10 {
-	uint16_t rxerrors;
-	uint16_t fixed;
-	uint8_t rssi;
-	uint8_t remrssi;
-	uint8_t txbuf;
-	uint8_t noise;
-	uint8_t remnoise;
+  uint16_t rxerrors;
+  uint16_t fixed;
+  uint8_t rssi;
+  uint8_t remrssi;
+  uint8_t txbuf;
+  uint8_t noise;
+  uint8_t remnoise;
 };
 
 // use '3D' for 3DRadio
@@ -39,79 +39,78 @@ static uint8_t g_sequenceNumber = 0;
 
 
 /*
- * Calculates the MAVLink checksum on a packet in parameter buffer 
+ * Calculates the MAVLink checksum on a packet in parameter buffer
  * and append it after the data
  */
 static void mavlink_crc(uint8_t* buf)
 {
-	register uint8_t length = buf[1];
+  register uint8_t length = buf[1];
   uint16_t sum = 0xFFFF;
-	uint8_t i, stoplen;
+  uint8_t i, stoplen;
 
-	stoplen = length + MAV_HEADER_SIZE + 1;
+  stoplen = length + MAV_HEADER_SIZE + 1;
 
-	// MAVLink 1.0 has an extra CRC seed
-	buf[length + MAV_HEADER_SIZE] = MAVLINK_RADIO_CRC_EXTRA;
+  // MAVLink 1.0 has an extra CRC seed
+  buf[length + MAV_HEADER_SIZE] = MAVLINK_RADIO_CRC_EXTRA;
 
-	i = 1;
-	while (i<stoplen) {
-		register uint8_t tmp;
-		tmp = buf[i] ^ (uint8_t)(sum&0xff);
-		tmp ^= (tmp<<4);
-		sum = (sum>>8) ^ (tmp<<8) ^ (tmp<<3) ^ (tmp>>4);
-		i++;
-        }
+  i = 1;
+  while (i<stoplen) {
+    register uint8_t tmp;
+    tmp = buf[i] ^ (uint8_t)(sum&0xff);
+    tmp ^= (tmp<<4);
+    sum = (sum>>8) ^ (tmp<<8) ^ (tmp<<3) ^ (tmp>>4);
+    i++;
+  }
 
-	buf[length+MAV_HEADER_SIZE] = sum&0xFF;
-	buf[length+MAV_HEADER_SIZE+1] = sum>>8;
+  buf[length+MAV_HEADER_SIZE] = sum&0xFF;
+  buf[length+MAV_HEADER_SIZE+1] = sum>>8;
 }
 
 
 // return available space in rx buffer as a percentage
 inline uint8_t	serial_space(uint16_t available, uint16_t max)
 {
-	uint16_t space = max - available;
-	space = (100 * (space / 8)) / (max / 8);
-	return space;
+  uint16_t space = max - available;
+  space = (100 * (space / 8)) / (max / 8);
+  return space;
 }
 
 
 /// send a MAVLink status report packet
 void MAVLink_report(uint8_t space, uint8_t RSSI_remote, uint16_t RSSI_local, uint16_t rxerrors)
 {
-	g_mavlinkBuffer[0] = 254;
-	g_mavlinkBuffer[1] = sizeof(struct mavlink_RADIO_v10);
-	g_mavlinkBuffer[2] = g_sequenceNumber++;
-	g_mavlinkBuffer[3] = RADIO_SOURCE_SYSTEM;
-	g_mavlinkBuffer[4] = RADIO_SOURCE_COMPONENT;
-	g_mavlinkBuffer[5] = MAVLINK_MSG_ID_RADIO;
+  g_mavlinkBuffer[0] = 254;
+  g_mavlinkBuffer[1] = sizeof(struct mavlink_RADIO_v10);
+  g_mavlinkBuffer[2] = g_sequenceNumber++;
+  g_mavlinkBuffer[3] = RADIO_SOURCE_SYSTEM;
+  g_mavlinkBuffer[4] = RADIO_SOURCE_COMPONENT;
+  g_mavlinkBuffer[5] = MAVLINK_MSG_ID_RADIO;
 
 
-	// NOTE: 
-	// In mission planner, the Link quality is a percentage of the number
-	// of good packets received
-	// to the number of packets missed (detected by mavlink seq no.)
-	// mission planner does disregard packets with '3D' in header for this calculation
+  // NOTE:
+  // In mission planner, the Link quality is a percentage of the number
+  // of good packets received
+  // to the number of packets missed (detected by mavlink seq no.)
+  // mission planner does disregard packets with '3D' in header for this calculation
 
-	struct mavlink_RADIO_v10 *m = (struct mavlink_RADIO_v10 *)&g_mavlinkBuffer[MAV_HEADER_SIZE];
-	m->rxerrors = rxerrors; // errors.rx_errors;
-	m->fixed    = 0; //errors.corrected_packets;
-	m->txbuf    = space; //serial_read_space();
-	m->rssi     = RSSI_local; //statistics.average_rssi;
-	m->remrssi  = RSSI_remote; //remote_statistics.average_rssi;
-	m->noise    = 0; //statistics.average_noise;
-	m->remnoise = 0; //remote_statistics.average_noise;
+  struct mavlink_RADIO_v10 *m = (struct mavlink_RADIO_v10 *)&g_mavlinkBuffer[MAV_HEADER_SIZE];
+  m->rxerrors = rxerrors; // errors.rx_errors;
+  m->fixed    = 0; //errors.corrected_packets;
+  m->txbuf    = space; //serial_read_space();
+  m->rssi     = RSSI_local; //statistics.average_rssi;
+  m->remrssi  = RSSI_remote; //remote_statistics.average_rssi;
+  m->noise    = 0; //statistics.average_noise;
+  m->remnoise = 0; //remote_statistics.average_noise;
 
-	mavlink_crc(g_mavlinkBuffer);
+  mavlink_crc(g_mavlinkBuffer);
 
-	uint8_t size = sizeof(g_mavlinkBuffer);
-	uint8_t *buffer = (uint8_t*)g_mavlinkBuffer;
-	if (Serial.txspace() >= size) 		// don't cause an overflow
-	{
-			//MavlinkSerialPort.write(g_mavlinkBuffer, sizeof(g_mavlinkBuffer)); // TODO: Fix error: no matching function for call to 'SerialPort::write (it should be in Print class which SerialPort is derived from through Stream
-		  while (size--) {
-			  Serial.write(*buffer++);
-		  }
-	}
+  uint8_t size = sizeof(g_mavlinkBuffer);
+  uint8_t *buffer = (uint8_t*)g_mavlinkBuffer;
+  if (Serial.txspace() >= size) {	// don't cause an overflow
+    //MavlinkSerialPort.write(g_mavlinkBuffer, sizeof(g_mavlinkBuffer)); // TODO: Fix error: no matching function for call to 'SerialPort::write (it should be in Print class which SerialPort is derived from through Stream
+    while (size--) {
+      Serial.write(*buffer++);
+    }
+  }
 
 }

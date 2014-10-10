@@ -1,6 +1,10 @@
-// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: t -*-
-//
 // Interrupt-driven serial transmit/receive library.
+//
+// Library changed slighly to fit openLRSng project by martin.collberg@gmail.com (gitsly).
+// Changes made:
+// - Move all code into header to have it compiling in Arduino IDE without using libraries
+// - Optimize for flash space
+// - Memory allocation for ringbuffers can be made outside of this class (no malloc).
 //
 //      Copyright (c) 2010 Michael Smith. All rights reserved.
 //
@@ -230,28 +234,6 @@ public:
   }
 
   using Stream::write;
-  //@}
-
-  /// Extended port open method
-  ///
-  /// Allows for both opening with specified buffer sizes, and re-opening
-  /// to adjust a subset of the port's settings.
-  ///
-  /// @note	RingBuffer sizes greater than ::_max_buffer_size will be rounded
-  ///			down.
-  ///
-  /// @param	baud		Selects the speed that the port will be
-  ///						configured to.  If zero, the port speed is left
-  ///						unchanged.
-  /// @param rxSpace		Sets the receive buffer size for the port.  If zero
-  ///						then the buffer size is left unchanged if the port
-  ///						is open, or set to ::_default_rx_buffer_size if it is
-  ///						currently closed.
-  /// @param txSpace		Sets the transmit buffer size for the port.  If zero
-  ///						then the buffer size is left unchanged if the port
-  ///						is open, or set to ::_default_tx_buffer_size if it
-  ///						is currently closed.
-  ///
 
   __attribute__ ((noinline)) void setBuffers(uint8_t* rxPtr, uint16_t rxSpace, uint8_t* txPtr, uint16_t txSpace) {
     // allocate buffers
@@ -330,12 +312,11 @@ private:
   // for enough space to appear
   bool			_nonblocking_writes;
 
-  /// Allocates a buffer of the given size
+  /// Set ringbuffer pointer to buffer allocated elsewhere, and calculate mask.
   ///
   /// @param	buffer		The buffer descriptor for which the buffer will
   ///						will be allocated.
-  /// @param	size		The desired buffer size.
-  /// @returns			True if the buffer was allocated successfully.
+  /// @param	size		The desired buffer size. (max 512)
   ///
   __attribute__ ((noinline)) void _allocBuffer(RingBuffer *buffer, uint8_t* bufPtr, unsigned int size) {
     uint8_t i;
@@ -345,17 +326,6 @@ private:
     buffer->bytes = bufPtr;
   }
 
-  /// default receive buffer size
-  static const unsigned int	_default_rx_buffer_size = 128;
-
-  /// default transmit buffer size
-  static const unsigned int	_default_tx_buffer_size = 16;
-
-  /// maxium tx/rx buffer size
-  /// @note if we could bring the max size down to 256, the mask and head/tail
-  ///       pointers in the buffer could become uint8_t.
-  ///
-  static const unsigned int	_max_buffer_size = 512;
 };
 
 

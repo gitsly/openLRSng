@@ -130,7 +130,6 @@ struct RX_config {
 struct bind_data {
   uint8_t version;
   uint32_t serial_baudrate;
-  uint8_t serial_downlink; // 0-COM_BUF_MAXSIZE, max byte count for serial downlink
   uint32_t rf_frequency;
   uint32_t rf_magic;
   uint8_t rf_power;
@@ -138,6 +137,7 @@ struct bind_data {
   uint8_t hopchannel[MAXHOPS];
   uint8_t modem_params;
   uint8_t flags;
+  uint8_t serial_downlink; // 0-COM_BUF_MAXSIZE, max byte count for serial downlink
 } bind_data;
 
 struct rfm22_modem_regs {

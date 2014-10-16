@@ -384,7 +384,7 @@ void setup(void)
 
   checkBND();
 
-#ifdef __AVR_ATmega32U4__ // badzz 
+#ifdef __AVR_ATmega32U4__
   TelemetrySerial.setBuffers(serial_rxbuffer, SERIAL_BUF_RX_SIZE, serial_txbuffer, SERIAL_BUF_TX_SIZE);
 #endif
   if (bind_data.serial_baudrate && (bind_data.serial_baudrate < 5)) {

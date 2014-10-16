@@ -220,8 +220,13 @@ void setupOutputs()
   if ((rx_config.RSSIpwm & 0x0f) == ppmChannels) {
     ppmChannels += 1;
   }
-  if ((rx_config.RSSIpwm > 47) && ((rx_config.RSSIpwm & 0x0f) == ppmChannels-1)) {
+  if ((rx_config.RSSIpwm > 47) &&
+      (rx_config.RSSIpwm < 63) &&
+      ((rx_config.RSSIpwm & 0x0f) == ppmChannels-1)) {
     ppmChannels += 1;
+  }
+  if (ppmChannels > 16) {
+    ppmChannels=16;
   }
 
   for (i = 0; i < OUTPUTS; i++) {
@@ -709,7 +714,10 @@ void setup()
   if (rx_config.pinMapping[RXD_OUTPUT]!=PINMAP_RXD) {
     UCSR0B &= 0xEF; //disable serial RXD
   }
-  if (rx_config.pinMapping[TXD_OUTPUT]!=PINMAP_TXD) {
+  if ((rx_config.pinMapping[TXD_OUTPUT]!=PINMAP_TXD) &&
+      (rx_config.pinMapping[TXD_OUTPUT]!=PINMAP_SUMD) &&
+      (rx_config.pinMapping[TXD_OUTPUT]!=PINMAP_SBUS) &&
+      (rx_config.pinMapping[TXD_OUTPUT]!=PINMAP_SPKTRM)) {
     UCSR0B &= 0xF7; //disable serial TXD
   }
 

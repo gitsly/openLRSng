@@ -6,6 +6,9 @@ uint16_t rxerrors = 0;
 
 uint8_t RF_channel = 0;
 
+uint8_t altPwrIndex = 0; // every nth packet at lower power
+uint8_t altPwrCount = 0;
+
 uint8_t FSstate = 0; // 1 = waiting timer, 2 = send FS, 3 sent waiting btn release
 uint32_t FStime = 0;  // time when button went down...
 
@@ -191,8 +194,12 @@ void bindMode(void)
 #ifdef CLI
       case '\n':
       case '\r':
+#ifdef CLI_ENABLED
         Serial.println(F("Enter menu..."));
         handleCLI();
+#else
+        Serial.println(F("CLI not available, use configurator!"));
+#endif
         break;
 #endif
       case '#':
@@ -401,6 +408,15 @@ void setup(void)
 
   setupPPMinput(); // need to do this to make sure ppm polarity is correct if profile was changed
 
+  altPwrIndex=0;
+  if(tx_config.flags & ALT_POWER) {
+    if (bind_data.hopchannel[6] && bind_data.hopchannel[13] && bind_data.hopchannel[20]) {
+      altPwrIndex=7;
+    } else {
+      altPwrIndex=5;
+    }
+  }
+
   init_rfm(0);
   rfmSetChannel(RF_channel);
   rx_reset();
@@ -579,6 +595,7 @@ uint16_t getChannel(uint8_t ch)
     return v;
   } else {
     switch (ch) {
+#ifdef TX_AIN0
 #ifdef TX_AIN_IS_DIGITAL
     case 16:
       return digitalRead(TX_AIN0) ? 1012 : 12;
@@ -589,6 +606,7 @@ uint16_t getChannel(uint8_t ch)
       return analogRead(TX_AIN0);
     case 17:
       return analogRead(TX_AIN1);
+#endif
 #endif
     default:
       return 512;
@@ -776,6 +794,15 @@ void loop(void)
       Green_LED_ON;
 
       // Send the data over RF
+      if (altPwrIndex && bind_data.rf_power) {
+        if (altPwrCount++ == altPwrIndex) {
+          altPwrCount=0;
+          rfmSetPower(bind_data.rf_power-1);
+        } else {
+          rfmSetPower(bind_data.rf_power);
+        }
+      }
+
       rfmSetChannel(RF_channel);
 
       tx_packet_async(tx_buf, getPacketSize(&bind_data));

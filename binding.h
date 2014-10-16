@@ -26,6 +26,7 @@
 #define DEFAULT_SERIAL_DOWNLINK 9 // Must be 9 unless using Mavlink telem. max = COM_BUF_MAXSIZE, 29 is good for APM @ datarate 2
 
 // TX_CONFIG flag masks
+#define ALT_POWER           0x08
 #define MUTE_TX             0x10 // do not beep on telemetry loss
 #define MICROPPM            0x20
 #define INVERTED_PPMIN      0x40
@@ -364,21 +365,6 @@ void txInitDefaults()
   }
 }
 
-void txWriteEeprom()
-{
-  accessEEPROM(0,true);
-  accessEEPROM(1,true);
-}
-
-void txReadEeprom()
-{
-  if ((!accessEEPROM(0, false)) || (!accessEEPROM(1, false))) {
-    txInitDefaults();
-    bindInitDefaults();
-    txWriteEeprom();
-  }
-}
-
 void bindRandomize(void)
 {
   uint8_t emergency_counter = 0;
@@ -418,6 +404,22 @@ again:
     }
 
     bind_data.hopchannel[c] = ch;
+  }
+}
+
+void txWriteEeprom()
+{
+  accessEEPROM(0,true);
+  accessEEPROM(1,true);
+}
+
+void txReadEeprom()
+{
+  if ((!accessEEPROM(0, false)) || (!accessEEPROM(1, false))) {
+    txInitDefaults();
+    bindInitDefaults();
+    bindRandomize();
+    txWriteEeprom();
   }
 }
 #endif

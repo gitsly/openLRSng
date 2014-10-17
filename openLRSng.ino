@@ -74,7 +74,7 @@
 
 
 //####### Transparant serial #######
-#define COM_BUF_MAXSIZE 32 // maximum downlink packet size. Max value is 64, No use having higher than SERIAL_BUFSIZE, (also 1 byte per rf packet is dedicated for datalength and flags)
+#define COM_BUF_MAXSIZE 32 // maximum downlink packet size. Max value is 64 , No use having higher than SERIAL_BUFSIZE, (also 1 byte per rf packet is dedicated for datalength and flags). Mavlink telemetry mode allows for serial downlink != 9
 
 //####### MAVLink #######
 #define MAVLINK_INJECT_INTERVAL 1000000
@@ -105,7 +105,6 @@
 #include "TX.h"
 #else
 #include "mavlink.h"
-#include "mavlinkframedetector.h"
 #include "I2C.h"
 #include "serialPPM.h"
 #include "RX.h"

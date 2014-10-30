@@ -818,9 +818,9 @@ retry:
 
     updateLBeep(false);
 
-    if ((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_MAVLINK
-        && mavlinkIncomingFrame.IsIdle()
-        && timeUs - mavlink_last_inject_time > MAVLINK_INJECT_INTERVAL) {
+    // Easyglider have the minimOSD always listening to radio status packages.
+    // Send them out...
+    if (timeUs - mavlink_last_inject_time > MAVLINK_INJECT_INTERVAL) {
 
       const uint8_t space = serial_space(Serial.available(), SERIAL_BUF_RX_SIZE);
       MAVLink_report(space, 0, smoothRSSI, rxerrors);

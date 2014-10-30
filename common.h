@@ -448,6 +448,18 @@ void rfmSetPower(uint8_t p)
   spiWriteRegister(0x6d, p);
 }
 
+void setupGPIOs()
+{
+#ifdef SWAP_GPIOS
+  spiWriteRegister(0x0b, 0x15);    // gpio0 RX State
+  spiWriteRegister(0x0c, 0x12);    // gpio1 TX State
+#else
+  spiWriteRegister(0x0b, 0x12);    // gpio0 TX State
+  spiWriteRegister(0x0c, 0x15);    // gpio1 RX State
+#endif
+}
+
+
 void init_rfm(uint8_t isbind)
 {
 #ifdef SDN_pin
@@ -463,13 +475,7 @@ void init_rfm(uint8_t isbind)
   spiWriteRegister(0x07, RF22B_PWRSTATE_READY); // disable lbd, wakeup timer, use internal 32768,xton = 1; in ready mode
   spiWriteRegister(0x09, 0x7f);   // c = 12.5p
   spiWriteRegister(0x0a, 0x05);
-#ifdef SWAP_GPIOS
-  spiWriteRegister(0x0b, 0x15);    // gpio0 RX State
-  spiWriteRegister(0x0c, 0x12);    // gpio1 TX State
-#else
-  spiWriteRegister(0x0b, 0x12);    // gpio0 TX State
-  spiWriteRegister(0x0c, 0x15);    // gpio1 RX State
-#endif
+  setupGPIOs();
   spiWriteRegister(0x0d, 0xfd);    // gpio 2 micro-controller clk output
   spiWriteRegister(0x0e, 0x00);    // gpio    0, 1,2 NO OTHER FUNCTION.
 
@@ -616,8 +622,7 @@ void beacon_send(bool static_tone)
   spiWriteRegister(0x07, RF22B_PWRSTATE_READY);      // disable lbd, wakeup timer, use internal 32768,xton = 1; in ready mode
   spiWriteRegister(0x09, 0x7f);  // (default) c = 12.5p
   spiWriteRegister(0x0a, 0x05);
-  spiWriteRegister(0x0b, 0x12);    // gpio0 TX State
-  spiWriteRegister(0x0c, 0x15);    // gpio1 RX State
+  setupGPIOs();
   spiWriteRegister(0x0d, 0xfd);    // gpio 2 micro-controller clk output
   spiWriteRegister(0x0e, 0x00);    // gpio    0, 1,2 NO OTHER FUNCTION.
 

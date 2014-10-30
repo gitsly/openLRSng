@@ -21,7 +21,7 @@ ARDUINO_PATH=/usr/share/arduino
 #
 BOARD_TYPE=3
 BOARD_TYPES_TX=
-BOARD_TYPES_RX=3
+BOARD_TYPES_RX=5
 
 #
 # You can compile all TX as TX, and all RX as either RX or TX.

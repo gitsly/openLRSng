@@ -634,11 +634,14 @@ void loop(void)
     Red_LED_OFF;
   }
 
-  while (TelemetrySerial.available()) {
-    uint8_t ch = TelemetrySerial.read();
-    if (serialMode) {
+  if (serialMode) {
+    while (TelemetrySerial.available()) {
+      uint8_t ch = TelemetrySerial.read();
       processChannelsFromSerial(ch);
-    } else if (((serial_tail + 1) % SERIAL_BUFSIZE) != serial_head) {
+    }
+  } else {
+    while (TelemetrySerial.available() && ((serial_tail + 1) % SERIAL_BUFSIZE) != serial_head) {
+      uint8_t ch = TelemetrySerial.read();
       serial_buffer[serial_tail] = ch;
       serial_tail = (serial_tail + 1) % SERIAL_BUFSIZE;
     }

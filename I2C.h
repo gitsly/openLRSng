@@ -98,7 +98,7 @@ SIGNAL(TWI_vect)
   uint8_t slack=0;
   //  Serial.println(TW_STATUS,16);
   switch(TW_STATUS) {
-    // All Master
+  // All Master
   case TW_START:     // sent start condition
   case TW_REP_START: // sent repeated start condition
     // copy device address and r/w bit to output register and ack
@@ -106,7 +106,7 @@ SIGNAL(TWI_vect)
     myI2C_reply(1);
     break;
 
-    // Master Transmitter
+  // Master Transmitter
   case TW_MT_SLA_ACK:  // slave receiver acked address
   case TW_MT_DATA_ACK: // slave receiver acked data
     // if there is data to send, send it, otherwise stop
@@ -141,7 +141,7 @@ SIGNAL(TWI_vect)
     myI2C_releaseBus();
     break;
 
-    // Master Receiver
+  // Master Receiver
   case TW_MR_DATA_ACK: // data received, ack sent
     // put byte into buffer
     *(myI2C_dataPtr++) = TWDR;
@@ -172,9 +172,9 @@ SIGNAL(TWI_vect)
     myI2C_flags &= ~MYI2C_BUSY;
     myI2C_stop();
     break;
-    // TW_MR_ARB_LOST handled by TW_MT_ARB_LOST case
+  // TW_MR_ARB_LOST handled by TW_MT_ARB_LOST case
 
-    // Slave Receiver
+  // Slave Receiver
   case TW_SR_SLA_ACK:   // addressed, returned ack
   case TW_SR_GCALL_ACK: // addressed generally, returned ack
   case TW_SR_ARB_LOST_SLA_ACK:   // lost arbitration, returned ack
@@ -201,11 +201,11 @@ SIGNAL(TWI_vect)
     myI2C_reply(0);
     break;
 
-    // Slave Transmitter
+  // Slave Transmitter
   case TW_ST_SLA_ACK:          // addressed, returned ack
   case TW_ST_ARB_LOST_SLA_ACK: // arbitration lost, returned ack
     slack=1;
-    // just fall thru to data sending
+  // just fall thru to data sending
   case TW_ST_DATA_ACK: // byte sent, ack returned
 
     if (myI2C_slaveHandler) {
@@ -223,7 +223,7 @@ SIGNAL(TWI_vect)
     myI2C_reply(1);
     break;
 
-    // All
+  // All
   case TW_NO_INFO:   // no state information
     break;
   case TW_BUS_ERROR: // bus error, illegal stop/start

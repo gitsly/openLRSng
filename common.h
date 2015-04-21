@@ -4,8 +4,6 @@ void rfmSetCarrierFrequency(uint32_t f);
 void rfmSetPower(uint8_t p);
 uint8_t rfmGetRSSI(void);
 void RF22B_init_parameter(void);
-uint8_t spiReadRegister(uint8_t address);
-void spiWriteRegister(uint8_t address, uint8_t data);
 void tx_packet(uint8_t* pkt, uint8_t size);
 void to_rx_mode(void);
 
@@ -281,110 +279,6 @@ void scannerMode(void)
 #define RF22B_Rx_packet_received_interrupt   0x02
 
 uint8_t ItStatus1, ItStatus2;
-
-void spiWriteBit(uint8_t b);
-
-void spiSendCommand(uint8_t command);
-void spiSendAddress(uint8_t i);
-uint8_t spiReadData(void);
-void spiWriteData(uint8_t i);
-
-void to_sleep_mode(void);
-void rx_reset(void);
-
-// **** SPI bit banging functions
-
-void spiWriteBit(uint8_t b)
-{
-  if (b) {
-    SCK_off;
-    NOP();
-    SDI_on;
-    NOP();
-    SCK_on;
-    NOP();
-  } else {
-    SCK_off;
-    NOP();
-    SDI_off;
-    NOP();
-    SCK_on;
-    NOP();
-  }
-}
-
-uint8_t spiReadBit(void)
-{
-  uint8_t r = 0;
-  SCK_on;
-  NOP();
-
-  if (SDO_1) {
-    r = 1;
-  }
-
-  SCK_off;
-  NOP();
-  return r;
-}
-
-void spiSendCommand(uint8_t command)
-{
-  nSEL_on;
-  SCK_off;
-  nSEL_off;
-
-  for (uint8_t n = 0; n < 8 ; n++) {
-    spiWriteBit(command & 0x80);
-    command = command << 1;
-  }
-
-  SCK_off;
-}
-
-void spiSendAddress(uint8_t i)
-{
-  spiSendCommand(i & 0x7f);
-}
-
-void spiWriteData(uint8_t i)
-{
-  for (uint8_t n = 0; n < 8; n++) {
-    spiWriteBit(i & 0x80);
-    i = i << 1;
-  }
-
-  SCK_off;
-}
-
-uint8_t spiReadData(void)
-{
-  uint8_t Result = 0;
-  SCK_off;
-
-  for (uint8_t i = 0; i < 8; i++) {   //read fifo data byte
-    Result = (Result << 1) + spiReadBit();
-  }
-
-  return(Result);
-}
-
-uint8_t spiReadRegister(uint8_t address)
-{
-  uint8_t result;
-  spiSendAddress(address);
-  result = spiReadData();
-  nSEL_on;
-  return(result);
-}
-
-void spiWriteRegister(uint8_t address, uint8_t data)
-{
-  address |= 0x80; //
-  spiSendCommand(address);
-  spiWriteData(data);
-  nSEL_on;
-}
 
 // **** RFM22 access functions
 

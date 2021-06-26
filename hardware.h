@@ -861,6 +861,11 @@ void setupRfmInterrupt()
 
 #undef CLI_ENABLED
 
+// The default Serial on the Leonardo board is a software simulation for the serial
+// monitor via the USB connector. The extra Serial1 (defined to 'Serial10') is the hardware serial port
+// inside the microcontroller (RX,TX)
+// In the DTF-UHF this is the telemetry port (e.g. separate pins in the bottom
+// om the TX unit. USB is serial0 and remains at Baud 115200.
 DefineSerialPort(Serial10, 1);
 #define TelemetrySerial Serial10
 

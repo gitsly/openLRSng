@@ -1,20 +1,13 @@
 // **********************************************************
 // ************************ openLRSng ***********************
 // **********************************************************
-// ** by Kari Hautio - kha @ AeroQuad/RCGroups/IRC(Freenode)
-// ** other commits by cTn-dev, rlboyd, DTFUHF, pwarren
+// ** Mavlink telemetry by Martin.Collberg (martin.collberg@gmail.com)
 //
-// Developer chat at IRC: #openLRS @ freenode
+// This code is based on original OpenLRSng by Kari Hautio
+// (www.openlrsng.com)
+// which in turn is
+// based on  OpenLRS and thUndeadMod
 //
-// This code is based on original OpenLRS and thUndeadMod
-//
-// Donations for development tools and utilities (beer) here
-// https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=DSWGKGKPRX5CS
-//
-// Please note that for basic usage there is no need to use this
-// code in source form. Instead use configurator program available
-// freely in Google Chrome store.
-// http://goo.gl/iX7dJx
 //
 // **********************************************************
 // ************ based on: OpenLRS thUndeadMod ***************
@@ -44,7 +37,7 @@
 
 //####### COMPILATION TARGET #######
 // Enable to compile transmitter code, default is RX (remove leading //)
-//#define COMPILE_TX 0 // compile RX code
+// #define COMPILE_TX 0 // compile RX code
 #define COMPILE_TX 1 // compile TX code
 
 //####### TX BOARD TYPE #######
@@ -54,7 +47,7 @@
 //#define BOARD_TYPE 2 // 2 = Flytron OpenLRS M2/M3 Tx Board / OrangeRx UHF TX
 //#define BOARD_TYPE 3 // 3 = Flytron OpenLRS Rx v2 Board / OrangeRx UHF RX / HawkEye UHF RX (RX and TX supported)
 //#define BOARD_TYPE 4 // 4 = OpenLRSngTX / HawkEye UHF TX
-//#define BOARD_TYPE 5 // 5 = OpenLRSngRX-4/6ch (DTF UHF/HawkEye) (RX and TX supported)
+// #define BOARD_TYPE 5 // 5 = OpenLRSngRX-4/6ch (DTF UHF/HawkEye) (RX and TX supported) -> This is in my Skywalker (Rx)
 #define BOARD_TYPE 6 // 6 = DTF UHF/HawkEye DeluxeTX (Atmega32u4)
 //#define BOARD_TYPE 9 // 9 = BroversityRX
 

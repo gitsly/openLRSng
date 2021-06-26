@@ -421,6 +421,8 @@ void setup(void)
   printVersion(version);
   Serial.print(" on HW ");
   Serial.println(BOARD_TYPE);
+  Serial.print("Telemetry Serial Baud: ");
+  Serial.println(bind_data.serial_baudrate);
 
   delay(50);
 

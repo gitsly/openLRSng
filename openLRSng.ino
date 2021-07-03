@@ -38,7 +38,7 @@
 //####### COMPILATION TARGET #######
 // Enable to compile transmitter code, default is RX (remove leading //)
 // #define COMPILE_TX 0 // compile RX code
-#define COMPILE_TX 1 // compile TX code
+#define COMPILE_TX 0 // compile TX code
 
 //####### TX BOARD TYPE #######
 // Enable one of the lines below (remove leading //)
@@ -47,8 +47,8 @@
 //#define BOARD_TYPE 2 // 2 = Flytron OpenLRS M2/M3 Tx Board / OrangeRx UHF TX
 //#define BOARD_TYPE 3 // 3 = Flytron OpenLRS Rx v2 Board / OrangeRx UHF RX / HawkEye UHF RX (RX and TX supported)
 //#define BOARD_TYPE 4 // 4 = OpenLRSngTX / HawkEye UHF TX
-// #define BOARD_TYPE 5 // 5 = OpenLRSngRX-4/6ch (DTF UHF/HawkEye) (RX and TX supported) -> This is in my Skywalker (Rx)
-#define BOARD_TYPE 6 // 6 = DTF UHF/HawkEye DeluxeTX (Atmega32u4)
+#define BOARD_TYPE 5 // 5 = OpenLRSngRX-4/6ch (DTF UHF/HawkEye) (RX and TX supported) -> This is in my Skywalker (Rx)
+//#define BOARD_TYPE 6 // 6 = DTF UHF/HawkEye DeluxeTX (Atmega32u4)
 //#define BOARD_TYPE 9 // 9 = BroversityRX
 
 //### Module type selection (default = 433, only needed for modified HW)
@@ -71,7 +71,8 @@
 #define COM_BUF_MAXSIZE 32 // maximum downlink packet size. Max value is 64 , No use having higher than SERIAL_BUFSIZE, (also 1 byte per rf packet is dedicated for datalength and flags). Mavlink telemetry mode allows for serial downlink != 9
 
 //####### MAVLink #######
-#define MAVLINK_INJECT_INTERVAL 1000000
+#define MAVLINK_INJECT_INTERVAL 20000 // uS  (inject 3DR radio status packets @50Hz. this tries to match how often slow-down is updated and send trigger is checked within the APM code.
+// On RX this will inflict the capability of recieveing stuff from the GCS
 
 //####################
 //### CODE SECTION ###

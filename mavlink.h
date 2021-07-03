@@ -103,7 +103,7 @@ struct mavlink_RADIO_v10 {
   uint8_t remnoise;
 };
 
-// use '3D' for 3DRadio
+// use '3D' for 3DRadio, this has special threatment in MissionPlanner GCS...
 #define RADIO_SOURCE_SYSTEM '3'
 #define RADIO_SOURCE_COMPONENT 'D'
 

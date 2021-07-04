@@ -39,6 +39,7 @@
 // Enable to compile transmitter code, default is RX (remove leading //)
 // #define COMPILE_TX 0 // compile RX code
 #define COMPILE_TX 1 // compile TX code
+#undef BUZZER_ENABLED // disable the buzzer (under develop this noise can get boring)
 
 //####### TX BOARD TYPE #######
 // Enable one of the lines below (remove leading //)

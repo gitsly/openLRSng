@@ -993,12 +993,14 @@ void buzzerInit()
 
 void buzzerOn(uint16_t freq)
 {
+#ifdef BUZZER_ENABLED
   // Leaving freq in since it is being used in code already.
   if (freq) {
     digitalWrite(BUZZER_ACT,HIGH);
   } else {
     digitalWrite(BUZZER_ACT,LOW);
   }
+#endif
 }
 
 #else

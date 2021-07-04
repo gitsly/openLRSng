@@ -741,15 +741,15 @@ void loop(void)
     if ((tx_buf[0] ^ rx_buf[0]) & 0x40) {
       tx_buf[0] ^= 0x40; // swap sequence to ack
 
-      if ((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_MAVLINK) { // Mavlink Rx only sends transparent serial data
-        const uint8_t byteCount = rx_buf[0] & 0x3F;
+      if ((bind_data.flags & TELEMETRY_MASK) == TELEMETRY_MAVLINK) { // Incoming telemetry data from RX (to us TX), writes this to TelemetrySerial...
+        const uint8_t byteCount = rx_buf[0] & 0x3F; // 0b11111100
 
         uint8_t i;
         for (i = 0; i < byteCount; i++) {
           const uint8_t ch = rx_buf[i + 1];
           TelemetrySerial.write(ch);
         }
-      } else if ((rx_buf[0] & 0x38) == 0x38) {
+      } else if ((rx_buf[0] & 0x38) == 0x38) { 
         uint8_t i;
         // transparent serial data...
         for (i = 0; i<= (rx_buf[0] & 7);) {

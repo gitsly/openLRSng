@@ -892,6 +892,7 @@ void buzzerInit()
 
 void buzzerOn(uint16_t freq)
 {
+#ifdef BUZZER_ENABLED
   if (freq) {
     uint32_t ocr = 125000L / freq;
     if (ocr>255) {
@@ -905,6 +906,7 @@ void buzzerOn(uint16_t freq)
   } else {
     TCCR4A &= ~(1<<COM4B0); // disable output
   }
+#endif
 }
 
 #define buzzerOff(foo) buzzerOn(0)

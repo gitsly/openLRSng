@@ -431,7 +431,7 @@ void buzzerOn(uint16_t freq)
     if (!ocr) {
       ocr=1;
     }
-    OCR2A = ocr;
+    OCR2A = ocr;/
     TCCR2A |= (1<<COM2B0); // enable output on buzzer2
   } else {
     digitalWrite(BUZZER_ACT,LOW);
@@ -859,7 +859,7 @@ void setupRfmInterrupt()
 #error TX module cannot be used as RX
 #endif
 
-#undef CLI_ENABLED
+#undef CLI_ENABLED // Disabled CLI on UHF DeluxeTX (unsure why). seems to work with it enabled. Enter bind (press button on powerup), then hit enter in putty 115200 BAUD as default.
 
 // The default Serial on the Leonardo board is a software simulation for the serial
 // monitor via the USB connector. The extra Serial1 (defined to 'Serial10') is the hardware serial port

@@ -170,7 +170,7 @@ void CLI_menu_headers(void)
 
   switch (CLI_menu) {
   case -1:
-    Serial.println(F("\n\nopenLRSng "));
+    Serial.println(F("\n\nopenLRSng (gitsly)"));
     printVersion(version);
     Serial.println(F(" - System configuration"));
     Serial.println(F("Use numbers [0-9] to edit parameters"));
